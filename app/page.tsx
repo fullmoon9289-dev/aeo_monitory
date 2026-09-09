@@ -1,189 +1,119 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Activity,
   ArrowRight,
-  BarChart3,
   Bell,
   Bot,
   Check,
   CheckCircle2,
   ChevronDown,
   CircleHelp,
-  ClipboardCheck,
   Clock3,
+  Database,
+  ExternalLink,
   FileCheck2,
   FileText,
+  Globe2,
   Hospital,
-  Lightbulb,
+  KeyRound,
+  Link2,
+  LockKeyhole,
   Map,
   Menu,
   MessageCircleQuestion,
-  Plus,
+  RefreshCw,
   Search,
-  Send,
   Settings,
+  ShieldAlert,
   ShieldCheck,
   Sparkles,
   Stethoscope,
   Target,
-  TrendingUp,
   TriangleAlert,
-  UsersRound,
+  UserRoundCheck,
   X,
 } from 'lucide-react';
-import { Area, AreaChart, CartesianGrid, XAxis } from 'recharts';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import {
-  ChartContainer,
-  ChartTooltip,
-  ChartTooltipContent,
-  type ChartConfig,
-} from '@/components/ui/chart';
+import { Button } from '@/components/ui/button';
+import clinicData from '@/data/withyou-clinic.json';
 
-type View = 'command' | 'journey' | 'opportunities' | 'studio' | 'monitor';
+type View =
+  | 'command'
+  | 'journey'
+  | 'opportunities'
+  | 'studio'
+  | 'monitor'
+  | 'knowledge'
+  | 'settings';
+type FactStatus =
+  | 'source_confirmed'
+  | 'medical_review_required'
+  | 'needs_confirmation'
+  | 'blocked_claim';
+type Fact = (typeof clinicData.facts)[number] & { status: FactStatus };
 
-const visibilityData = [
-  { day: '8/12', score: 42 },
-  { day: '8/16', score: 46 },
-  { day: '8/20', score: 44 },
-  { day: '8/24', score: 55 },
-  { day: '8/28', score: 61 },
-  { day: '9/1', score: 64 },
-  { day: '9/5', score: 72 },
-  { day: '9/9', score: 78 },
-];
-const chartConfig = {
-  score: { label: '추천 가시성', color: '#6957e8' },
-} satisfies ChartConfig;
+const facts = clinicData.facts as Fact[];
+const opportunities = clinicData.opportunities;
 
-const journeySteps = [
-  {
-    label: '증상 탐색',
-    example: '아침에 허리가 뻣뻣해요',
-    coverage: 86,
-    questions: 18,
-    tone: '#3b82f6',
+const statusMeta: Record<
+  FactStatus,
+  { label: string; tone: string; dot: string; description: string }
+> = {
+  source_confirmed: {
+    label: '공식 출처 확인',
+    tone: 'border-[#cfe9df] bg-[#eff9f4] text-[#247c5e]',
+    dot: 'bg-[#2cad77]',
+    description: '병원 공식 홈페이지에서 확인된 공개 정보',
   },
-  {
-    label: '질환 확인',
-    example: '허리디스크 초기증상',
-    coverage: 72,
-    questions: 14,
-    tone: '#7c6aeb',
+  medical_review_required: {
+    label: '의료진 검수',
+    tone: 'border-[#dfd9ff] bg-[#f4f1ff] text-[#5d49d2]',
+    dot: 'bg-[#7562e8]',
+    description: '현재 운영 여부와 환자 대상 표현을 확인할 정보',
   },
-  {
-    label: '치료 비교',
-    example: '주사치료와 도수치료 차이',
-    coverage: 48,
-    questions: 21,
-    tone: '#e59b42',
+  needs_confirmation: {
+    label: '병원 확인 필요',
+    tone: 'border-[#f2dfc5] bg-[#fff8ed] text-[#af671e]',
+    dot: 'bg-[#e59b42]',
+    description: '페이지 표기가 다르거나 최신 확인이 필요한 정보',
   },
-  {
-    label: '비용·보험',
-    example: '도수치료 실비 적용',
-    coverage: 39,
-    questions: 12,
-    tone: '#ec6e6e',
+  blocked_claim: {
+    label: '콘텐츠 사용 차단',
+    tone: 'border-[#f1d2d5] bg-[#fff3f4] text-[#bc4c57]',
+    dot: 'bg-[#dc5962]',
+    description: '근거와 의료·광고 검토 전 사용할 수 없는 주장',
   },
-  {
-    label: '병원 선택',
-    example: '강남 비수술 척추 병원',
-    coverage: 31,
-    questions: 16,
-    tone: '#d84b7f',
-  },
-];
+};
 
-const opportunityRows = [
-  {
-    keyword: '강남 허리디스크 비수술 치료',
-    stage: '병원 선택',
-    volume: '2.4K',
-    exposure: 18,
-    conversion: 95,
-    trust: 82,
-    score: 92,
-    risk: '보통',
+const counts = facts.reduce(
+  (result, fact) => {
+    result[fact.status] += 1;
+    return result;
   },
   {
-    keyword: '허리 주사치료 통증 얼마나',
-    stage: '치료 비교',
-    volume: '1.8K',
-    exposure: 24,
-    conversion: 81,
-    trust: 91,
-    score: 86,
-    risk: '낮음',
-  },
-  {
-    keyword: '도수치료 실비 적용 기준',
-    stage: '비용·보험',
-    volume: '3.1K',
-    exposure: 37,
-    conversion: 76,
-    trust: 84,
-    score: 81,
-    risk: '보통',
-  },
-  {
-    keyword: '목디스크 초기증상 자가진단',
-    stage: '질환 확인',
-    volume: '5.6K',
-    exposure: 44,
-    conversion: 64,
-    trust: 88,
-    score: 77,
-    risk: '낮음',
-  },
-];
-
-const monitoredQuestions = [
-  {
-    question: '강남에서 허리디스크를 비수술로 치료하는 병원은?',
-    stage: '병원 선택',
-    engines: ['ChatGPT', 'Perplexity', 'Google AI'],
-    mention: '1/3',
-    citation: '0/3',
-    competitor: '강남세브란스',
-  },
-  {
-    question: '허리 신경주사는 얼마나 아픈가요?',
-    stage: '치료 비교',
-    engines: ['ChatGPT', 'Claude'],
-    mention: '2/2',
-    citation: '1/2',
-    competitor: '없음',
-  },
-  {
-    question: '도수치료 실비보험 적용 기준을 알려줘',
-    stage: '비용·보험',
-    engines: ['Perplexity', 'Google AI'],
-    mention: '0/2',
-    citation: '1/2',
-    competitor: '자생한방병원',
-  },
-  {
-    question: '목디스크 초기에는 어떤 증상이 생기나요?',
-    stage: '질환 확인',
-    engines: ['ChatGPT', 'Claude', 'Google AI'],
-    mention: '2/3',
-    citation: '2/3',
-    competitor: '서울대병원',
-  },
-];
+    source_confirmed: 0,
+    medical_review_required: 0,
+    needs_confirmation: 0,
+    blocked_claim: 0,
+  } as Record<FactStatus, number>,
+);
 
 const navItems: {
   id: View;
   label: string;
-  icon: typeof BarChart3;
+  icon: typeof Activity;
   badge?: number;
 }[] = [
-  { id: 'command', label: '커맨드 센터', icon: BarChart3 },
+  { id: 'command', label: '온보딩 센터', icon: Activity },
   { id: 'journey', label: '환자 질문 지도', icon: Map },
-  { id: 'opportunities', label: '성장 기회', icon: Lightbulb, badge: 12 },
+  {
+    id: 'opportunities',
+    label: '성장 기회',
+    icon: Sparkles,
+    badge: opportunities.length,
+  },
   { id: 'studio', label: '콘텐츠 스튜디오', icon: FileText },
   { id: 'monitor', label: 'AI 답변 모니터', icon: Bot },
 ];
@@ -208,15 +138,13 @@ declare global {
 
 export default function Home() {
   const [active, setActive] = useState<View>('command');
-  const [selectedKeyword, setSelectedKeyword] = useState(
-    opportunityRows[0].keyword,
-  );
-  const [draftReady, setDraftReady] = useState(false);
+  const [question, setQuestion] = useState(opportunities[0].question);
+  const [briefReady, setBriefReady] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
 
-  const startDraft = (keyword: string) => {
-    setSelectedKeyword(keyword);
-    setDraftReady(true);
+  const openBrief = (nextQuestion: string) => {
+    setQuestion(nextQuestion);
+    setBriefReady(true);
     setActive('studio');
     setMobileOpen(false);
   };
@@ -227,30 +155,31 @@ export default function Home() {
     const lifecycle = new AbortController();
     const registration = context.registerTool(
       {
-        name: 'start_medical_content_draft',
-        title: '의료 콘텐츠 초안 시작',
+        name: 'prepare_withyou_medical_content_brief',
+        title: '위드유 의료 콘텐츠 브리프 준비',
         description:
-          '선택한 환자 질문으로 의료 검토 체크리스트가 포함된 AEO 콘텐츠 초안을 시작합니다.',
+          '환자 질문을 위드유 공식 지식베이스와 의료 검수 규칙에 연결한 콘텐츠 브리프로 엽니다.',
         inputSchema: {
           type: 'object',
-          properties: { keyword: { type: 'string', minLength: 2 } },
-          required: ['keyword'],
+          properties: { question: { type: 'string', minLength: 2 } },
+          required: ['question'],
           additionalProperties: false,
         },
         annotations: { readOnlyHint: false, untrustedContentHint: false },
         async execute(input) {
-          const keyword =
-            typeof input === 'object' && input !== null && 'keyword' in input
-              ? String((input as { keyword: unknown }).keyword).trim()
+          const nextQuestion =
+            typeof input === 'object' && input !== null && 'question' in input
+              ? String((input as { question: unknown }).question).trim()
               : '';
-          if (keyword.length < 2)
-            throw new Error('keyword는 두 글자 이상이어야 합니다.');
-          startDraft(keyword);
+          if (nextQuestion.length < 2)
+            throw new Error('질문은 두 글자 이상이어야 합니다.');
+          openBrief(nextQuestion);
           return {
-            status: 'draft_started',
-            keyword,
+            status: 'brief_ready',
+            hospital: clinicData.hospital.brandName,
+            question: nextQuestion,
             medical_review: 'required',
-            view: 'studio',
+            blocked_claims: counts.blocked_claim,
           };
         },
       },
@@ -264,24 +193,31 @@ export default function Home() {
     <div className="min-h-screen bg-[#f7f7fa] text-[#20202a]">
       <Sidebar
         active={active}
-        onSelect={setActive}
         open={mobileOpen}
         onClose={() => setMobileOpen(false)}
+        onSelect={(view) => {
+          setActive(view);
+          setMobileOpen(false);
+        }}
       />
       <div className="lg:pl-[248px]">
         <Topbar onMenu={() => setMobileOpen(true)} />
         <main className="mx-auto max-w-[1510px] px-5 py-7 sm:px-7 lg:px-9 lg:py-8">
           {active === 'command' && (
-            <CommandCenter onNavigate={setActive} onDraft={startDraft} />
+            <CommandCenter onNavigate={setActive} onBrief={openBrief} />
           )}
-          {active === 'journey' && <JourneyView onNavigate={setActive} />}
+          {active === 'journey' && (
+            <JourneyView onNavigate={setActive} onBrief={openBrief} />
+          )}
           {active === 'opportunities' && (
-            <OpportunitiesView onDraft={startDraft} />
+            <OpportunitiesView onBrief={openBrief} />
           )}
           {active === 'studio' && (
-            <StudioView keyword={selectedKeyword} ready={draftReady} />
+            <StudioView question={question} ready={briefReady} />
           )}
-          {active === 'monitor' && <MonitorView />}
+          {active === 'monitor' && <MonitorView onNavigate={setActive} />}
+          {active === 'knowledge' && <KnowledgeView />}
+          {active === 'settings' && <SettingsView />}
         </main>
       </div>
     </div>
@@ -290,24 +226,24 @@ export default function Home() {
 
 function Sidebar({
   active,
-  onSelect,
   open,
   onClose,
+  onSelect,
 }: {
   active: View;
-  onSelect: (view: View) => void;
   open: boolean;
   onClose: () => void;
+  onSelect: (view: View) => void;
 }) {
   return (
     <>
-      {open && (
+      {open ? (
         <button
           aria-label="메뉴 닫기"
           className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm lg:hidden"
           onClick={onClose}
         />
-      )}
+      ) : null}
       <aside
         className={`fixed inset-y-0 left-0 z-50 flex w-[248px] flex-col border-r border-[#e8e7ee] bg-white transition-transform lg:translate-x-0 ${open ? 'translate-x-0' : '-translate-x-full'}`}
       >
@@ -323,29 +259,41 @@ function Sidebar({
               HOSPITAL AEO OS
             </div>
           </div>
-          <button className="lg:hidden" onClick={onClose}>
+          <button
+            className="lg:hidden"
+            onClick={onClose}
+            aria-label="메뉴 닫기"
+          >
             <X className="size-4" />
           </button>
         </div>
+
         <div className="p-4">
-          <button className="flex w-full items-center gap-3 rounded-xl border border-[#e9e7ef] bg-[#fbfafe] px-3 py-2.5 text-left">
-            <div className="grid size-8 place-items-center rounded-lg bg-[#e9f3ff] text-[#397ac5]">
+          <button
+            onClick={() => onSelect('knowledge')}
+            className="flex w-full items-center gap-3 rounded-xl border border-[#dcd7fa] bg-[#f8f7ff] px-3 py-2.5 text-left transition hover:border-[#c9c0fb]"
+          >
+            <span className="grid size-8 place-items-center rounded-lg bg-[#e9f3ff] text-[#397ac5]">
               <Hospital className="size-4" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="truncate text-xs font-semibold">
-                서울바른척추병원
-              </div>
-              <div className="mt-0.5 text-[10px] text-[#9b98a6]">
-                정형외과 · 강남구
-              </div>
-            </div>
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block truncate text-xs font-semibold">
+                {clinicData.hospital.brandName}
+              </span>
+              <span className="mt-0.5 block text-[10px] text-[#8f8b98]">
+                {clinicData.hospital.category} · 강남구
+              </span>
+            </span>
             <ChevronDown className="size-3.5 text-[#9793a3]" />
           </button>
         </div>
-        <nav className="flex-1 px-3 py-2" aria-label="주요 메뉴">
+
+        <nav
+          className="flex-1 overflow-y-auto px-3 py-2"
+          aria-label="주요 메뉴"
+        >
           <div className="mb-2 px-3 text-[10px] font-semibold tracking-[.1em] text-[#a6a2af]">
-            GROWTH SYSTEM
+            AEO WORKFLOW
           </div>
           <div className="space-y-1">
             {navItems.map((item) => {
@@ -353,48 +301,82 @@ function Sidebar({
               return (
                 <button
                   key={item.id}
-                  onClick={() => {
-                    onSelect(item.id);
-                    onClose();
-                  }}
+                  onClick={() => onSelect(item.id)}
                   className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${active === item.id ? 'bg-[#f0edff] text-[#5946d4]' : 'text-[#666371] hover:bg-[#f7f6fa] hover:text-[#2f2d38]'}`}
                 >
                   <Icon className="size-[17px]" />
                   <span className="flex-1 text-left">{item.label}</span>
-                  {item.badge && (
+                  {item.badge ? (
                     <span className="rounded-full bg-[#6957e8] px-1.5 py-0.5 text-[10px] font-bold text-white">
                       {item.badge}
                     </span>
-                  )}
+                  ) : null}
                 </button>
               );
             })}
           </div>
+
           <div className="mb-2 mt-7 px-3 text-[10px] font-semibold tracking-[.1em] text-[#a6a2af]">
             HOSPITAL
           </div>
-          <button className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[#666371] hover:bg-[#f7f6fa]">
-            <Stethoscope className="size-[17px]" /> 병원 지식 베이스
-          </button>
-          <button className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-[#666371] hover:bg-[#f7f6fa]">
-            <Settings className="size-[17px]" /> 연동 및 설정
-          </button>
+          <SideButton
+            active={active === 'knowledge'}
+            icon={Database}
+            label="병원 지식 베이스"
+            suffix={String(facts.length)}
+            onClick={() => onSelect('knowledge')}
+          />
+          <SideButton
+            active={active === 'settings'}
+            icon={Settings}
+            label="연동 및 설정"
+            onClick={() => onSelect('settings')}
+          />
         </nav>
+
         <div className="m-4 rounded-2xl bg-[#252331] p-4 text-white">
           <div className="mb-3 flex items-center justify-between">
             <ShieldCheck className="size-4 text-[#b9adff]" />
-            <Badge className="bg-[#3d394d] text-[9px] text-white">SAFE</Badge>
+            <Badge className="bg-[#3d394d] text-[9px] text-white">
+              SAFETY FIRST
+            </Badge>
           </div>
-          <div className="text-xs font-semibold">의료 콘텐츠 안전도 93</div>
-          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/15">
-            <div className="h-full w-[93%] rounded-full bg-[#9d8cff]" />
+          <div className="text-xs font-semibold">위험 주장 자동 차단</div>
+          <div className="mt-2 flex items-baseline gap-1.5">
+            <span className="text-2xl font-bold">{counts.blocked_claim}</span>
+            <span className="text-[10px] text-white/55">개 표현</span>
           </div>
-          <div className="mt-2 text-[10px] text-white/60">
-            검토 필요 초안 2개
+          <div className="mt-2 text-[10px] leading-4 text-white/60">
+            의료진 승인 전 콘텐츠에 사용하지 않습니다.
           </div>
         </div>
       </aside>
     </>
+  );
+}
+
+function SideButton({
+  active,
+  icon: Icon,
+  label,
+  suffix,
+  onClick,
+}: {
+  active: boolean;
+  icon: typeof Activity;
+  label: string;
+  suffix?: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${active ? 'bg-[#f0edff] text-[#5946d4]' : 'text-[#666371] hover:bg-[#f7f6fa]'}`}
+    >
+      <Icon className="size-[17px]" />
+      <span className="flex-1 text-left">{label}</span>
+      {suffix ? <span className="text-[10px] font-bold">{suffix}</span> : null}
+    </button>
   );
 }
 
@@ -403,16 +385,16 @@ function Topbar({ onMenu }: { onMenu: () => void }) {
     <header className="sticky top-0 z-30 flex h-[72px] items-center border-b border-[#e8e7ee] bg-white/90 px-5 backdrop-blur-xl sm:px-7 lg:px-9">
       <button
         onClick={onMenu}
-        className="mr-3 rounded-lg p-2 hover:bg-[#f4f2f7] lg:hidden"
+        className="mr-3 rounded-lg p-2 lg:hidden"
         aria-label="메뉴 열기"
       >
         <Menu className="size-5" />
       </button>
-      <div className="hidden items-center gap-2 text-xs text-[#898593] sm:flex">
+      <div className="hidden items-center gap-2 text-xs text-[#777381] sm:flex">
         <span className="size-2 rounded-full bg-[#2cad77] shadow-[0_0_0_4px_#e5f7ef]" />
-        <span>4개 AI 엔진 모니터링 중</span>
+        <span>공식 홈페이지 연결됨</span>
         <span className="text-[#c4c1ca]">·</span>
-        <span>마지막 수집 18분 전</span>
+        <span>외부 데이터 연결 전</span>
       </div>
       <div className="ml-auto flex items-center gap-2">
         <Button variant="ghost" size="icon" aria-label="도움말">
@@ -421,26 +403,25 @@ function Topbar({ onMenu }: { onMenu: () => void }) {
         <Button
           variant="ghost"
           size="icon"
-          aria-label="알림"
+          aria-label="검수 알림"
           className="relative"
         >
           <Bell className="size-[18px] text-[#777381]" />
           <span className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-[#f05d62] ring-2 ring-white" />
         </Button>
         <div className="mx-1 h-6 w-px bg-[#e9e7ef]" />
-        <button className="flex items-center gap-2 rounded-lg p-1.5 hover:bg-[#f7f6fa]">
-          <div className="grid size-8 place-items-center rounded-full bg-[#dceaff] text-xs font-bold text-[#3769a3]">
-            김
+        <div className="flex items-center gap-2 rounded-lg p-1.5">
+          <div className="grid size-8 place-items-center rounded-full bg-[#e9f3ff] text-[10px] font-bold text-[#3769a3]">
+            WU
           </div>
-          <span className="hidden text-xs font-semibold sm:block">김지현</span>
-          <ChevronDown className="size-3.5 text-[#9a96a4]" />
-        </button>
+          <span className="hidden text-xs font-semibold sm:block">위드유</span>
+        </div>
       </div>
     </header>
   );
 }
 
-function PageHeading({
+function Heading({
   eyebrow,
   title,
   description,
@@ -460,237 +441,278 @@ function PageHeading({
         <h1 className="text-[26px] font-bold tracking-[-.035em] sm:text-[30px]">
           {title}
         </h1>
-        <p className="mt-2 max-w-2xl text-sm text-[#777381]">{description}</p>
+        <p className="mt-2 max-w-3xl text-sm leading-6 text-[#777381]">
+          {description}
+        </p>
       </div>
       {action}
     </div>
   );
 }
 
-function CommandCenter({
-  onNavigate,
-  onDraft,
+function Metric({
+  label,
+  value,
+  unit,
+  note,
+  icon: Icon,
+  tone,
 }: {
-  onNavigate: (view: View) => void;
-  onDraft: (keyword: string) => void;
+  label: string;
+  value: string;
+  unit: string;
+  note: string;
+  icon: typeof Activity;
+  tone: string;
 }) {
   return (
+    <div className="rounded-2xl border border-[#e8e6ee] bg-white p-5 shadow-[0_2px_10px_rgba(31,28,45,.025)]">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-medium text-[#7e7a89]">{label}</span>
+        <span className={`grid size-8 place-items-center rounded-lg ${tone}`}>
+          <Icon className="size-4" />
+        </span>
+      </div>
+      <div className="mt-4 flex items-end gap-1.5">
+        <span className="text-[30px] font-bold leading-none tracking-[-.04em]">
+          {value}
+        </span>
+        <span className="mb-0.5 text-xs text-[#9c98a6]">{unit}</span>
+      </div>
+      <div className="mt-3 text-[11px] text-[#777381]">{note}</div>
+    </div>
+  );
+}
+
+function CommandCenter({
+  onNavigate,
+  onBrief,
+}: {
+  onNavigate: (view: View) => void;
+  onBrief: (question: string) => void;
+}) {
+  const reviewTotal =
+    counts.medical_review_required + counts.needs_confirmation;
+  const steps = [
+    ['공식 홈페이지 연결', '완료', true, '11개 핵심 페이지 등록'],
+    [
+      '지식 구조화·위험 표현 분리',
+      '완료',
+      true,
+      `${facts.length}개 레코드 생성`,
+    ],
+    [
+      '병원 담당자·의료진 검수',
+      '진행 필요',
+      false,
+      `${reviewTotal}개 확인 대기`,
+    ],
+    ['Search Console·AI 연결', '권한 필요', false, '실제 검색 및 답변 기준선'],
+    ['콘텐츠 승인·CMS 발행', '대기', false, '의료진 승인 후 발행'],
+  ] as const;
+
+  return (
     <>
-      <PageHeading
-        eyebrow="오늘의 성장 브리핑 · 9월 9일"
-        title="AI 추천을 예약 기회로 바꾸세요"
-        description="환자의 질문 여정에서 우리 병원이 빠지는 순간을 찾고, 가장 영향이 큰 개선부터 실행합니다."
+      <Heading
+        eyebrow={`위드유 온보딩 · ${clinicData.hospital.collectedAt}`}
+        title="공식 홈페이지를 안전한 AEO 지식베이스로 전환했습니다"
+        description="AI 노출 점수를 꾸며내지 않고 공개 정보를 출처별로 정리했습니다. 병원 확인과 외부 데이터 연결이 끝나면 실제 기준선 측정을 시작합니다."
         action={
           <Button
-            onClick={() => onDraft(opportunityRows[0].keyword)}
-            className="h-9 rounded-lg bg-[#6957e8] px-4 hover:bg-[#5845d5]"
+            onClick={() => onNavigate('knowledge')}
+            className="bg-[#6957e8] hover:bg-[#5845d5]"
           >
-            <Sparkles className="size-4" /> 1순위 초안 만들기
+            <Database className="size-4" /> 지식베이스 검수
           </Button>
         }
       />
       <section className="mb-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        {[
-          {
-            label: '추천 가시성',
-            value: '78',
-            unit: '/100',
-            change: '+14.2%',
-            icon: Target,
-            color: 'bg-[#efecff] text-[#6653df]',
-          },
-          {
-            label: '예약 의도 커버리지',
-            value: '34',
-            unit: '/68 질문',
-            change: '+7개',
-            icon: UsersRound,
-            color: 'bg-[#ffeef4] text-[#ca4e78]',
-          },
-          {
-            label: '신뢰 가능한 인용',
-            value: '61',
-            unit: '%',
-            change: '+8.7%',
-            icon: ShieldCheck,
-            color: 'bg-[#e8f7f1] text-[#218462]',
-          },
-          {
-            label: '예상 상담 기회',
-            value: '+23',
-            unit: '건/월',
-            change: '상위 3개 실행 시',
-            icon: TrendingUp,
-            color: 'bg-[#fff1e6] text-[#d77832]',
-          },
-        ].map(({ label, value, unit, change, icon: Icon, color }) => (
-          <div
-            key={label}
-            className="rounded-2xl border border-[#e8e6ee] bg-white p-5 shadow-[0_2px_10px_rgba(31,28,45,.025)]"
-          >
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-[#7e7a89]">
-                {label}
-              </span>
-              <span
-                className={`grid size-8 place-items-center rounded-lg ${color}`}
-              >
-                <Icon className="size-4" />
-              </span>
-            </div>
-            <div className="mt-4 flex items-end gap-1.5">
-              <span className="text-[30px] font-bold leading-none tracking-[-.04em]">
-                {value}
-              </span>
-              <span className="mb-0.5 text-xs text-[#9c98a6]">{unit}</span>
-            </div>
-            <div className="mt-3 text-[11px] font-semibold text-[#258967]">
-              {change}
-            </div>
-          </div>
-        ))}
+        <Metric
+          label="수집한 지식"
+          value={String(facts.length)}
+          unit="개"
+          note="공식 페이지 11개 기준"
+          icon={Database}
+          tone="bg-[#efecff] text-[#6653df]"
+        />
+        <Metric
+          label="공식 출처 확인"
+          value={String(counts.source_confirmed)}
+          unit="개"
+          note="기본·운영·진료 정보"
+          icon={CheckCircle2}
+          tone="bg-[#e8f7f1] text-[#218462]"
+        />
+        <Metric
+          label="검수 대기"
+          value={String(reviewTotal)}
+          unit="개"
+          note="의료진 또는 병원 확인"
+          icon={UserRoundCheck}
+          tone="bg-[#fff1e6] text-[#d77832]"
+        />
+        <Metric
+          label="사용 차단 주장"
+          value={String(counts.blocked_claim)}
+          unit="개"
+          note="근거 확인 전 생성 금지"
+          icon={LockKeyhole}
+          tone="bg-[#ffeef1] text-[#c75161]"
+        />
       </section>
 
-      <section className="mb-5 grid gap-5 xl:grid-cols-[1.5fr_1fr]">
+      <section className="mb-5 grid gap-5 xl:grid-cols-[1.35fr_1fr]">
         <div className="rounded-2xl border border-[#e8e6ee] bg-white p-5 sm:p-6">
-          <div className="mb-4 flex items-start justify-between">
+          <div className="mb-5 flex items-start justify-between gap-4">
             <div>
-              <h2 className="text-[15px] font-bold">환자 질문 여정</h2>
+              <h2 className="text-[15px] font-bold">실서비스 시작 단계</h2>
               <p className="mt-1 text-xs text-[#9692a0]">
-                예약에 가까워질수록 우리 병원 노출이 줄어드는 구간을 추적합니다.
+                담당자 확인을 기다리는 단계입니다.
+              </p>
+            </div>
+            <span className="rounded-full bg-[#f0edff] px-2.5 py-1 text-[10px] font-bold text-[#5d49d2]">
+              2 / 5 완료
+            </span>
+          </div>
+          <div className="space-y-2">
+            {steps.map(([title, status, done, detail], index) => (
+              <div
+                key={title}
+                className="flex items-center gap-3 rounded-xl border border-[#eceaf1] px-3.5 py-3"
+              >
+                <span
+                  className={`grid size-7 shrink-0 place-items-center rounded-full text-[10px] font-bold ${done ? 'bg-[#e8f7f1] text-[#218462]' : 'bg-[#f1eff5] text-[#8b8794]'}`}
+                >
+                  {done ? <Check className="size-3.5" /> : index + 1}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs font-semibold">{title}</div>
+                  <div className="mt-0.5 text-[10px] text-[#9894a1]">
+                    {detail}
+                  </div>
+                </div>
+                <span
+                  className={`text-[10px] font-bold ${done ? 'text-[#258967]' : 'text-[#9a96a3]'}`}
+                >
+                  {status}
+                </span>
+              </div>
+            ))}
+          </div>
+          <Button
+            onClick={() => onNavigate('settings')}
+            variant="outline"
+            className="mt-4 w-full"
+          >
+            다음 연결 확인하기 <ArrowRight className="size-4" />
+          </Button>
+        </div>
+
+        <div className="overflow-hidden rounded-2xl border border-[#efdadd] bg-white">
+          <div className="border-b border-[#f2e5e7] bg-[#fff8f8] px-5 py-4 sm:px-6">
+            <div className="flex items-center gap-2 text-[#bc4c57]">
+              <ShieldAlert className="size-4" />
+              <h2 className="text-[15px] font-bold">먼저 확인할 데이터</h2>
+            </div>
+            <p className="mt-1 text-xs text-[#8f7d80]">
+              AI 콘텐츠에 그대로 사용하면 안 됩니다.
+            </p>
+          </div>
+          <div className="divide-y divide-[#f2eaeb]">
+            {[
+              [
+                '진료 경력 연수 불일치',
+                '15년·18년·20년 표기가 혼재',
+                '병원 확인',
+              ],
+              [
+                '토요일 진료시간 재확인',
+                '현재 페이지와 이전 검색 캐시가 다름',
+                '전화 확인',
+              ],
+              [
+                '92% 호전·면역세포 주장',
+                '원보고서 확인 전 콘텐츠 사용 차단',
+                '근거 필요',
+              ],
+              [
+                '완치·국내 유일·재발 방지',
+                '효과 보장·최상급으로 오인 가능',
+                '사용 금지',
+              ],
+            ].map(([title, detail, status]) => (
+              <button
+                key={title}
+                onClick={() => onNavigate('knowledge')}
+                className="flex w-full items-start gap-3 px-5 py-4 text-left hover:bg-[#fffafa] sm:px-6"
+              >
+                <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-lg bg-[#fff0f1] text-[#c75161]">
+                  <TriangleAlert className="size-3.5" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-xs font-semibold">{title}</span>
+                  <span className="mt-1 block text-[10px] leading-4 text-[#9692a0]">
+                    {detail}
+                  </span>
+                </span>
+                <span className="shrink-0 text-[10px] font-bold text-[#bc4c57]">
+                  {status}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-5 xl:grid-cols-[1.35fr_1fr]">
+        <div className="rounded-2xl border border-[#e8e6ee] bg-white p-5 sm:p-6">
+          <div className="mb-4 flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-[15px] font-bold">환자 질문 여정 초안</h2>
+              <p className="mt-1 text-xs text-[#9692a0]">
+                검색량이 아닌 홈페이지 근거 준비도입니다.
               </p>
             </div>
             <button
               onClick={() => onNavigate('journey')}
               className="text-xs font-semibold text-[#6957e8]"
             >
-              전체 지도 보기
+              전체 보기
             </button>
           </div>
           <JourneyStrip compact />
         </div>
         <div className="rounded-2xl bg-[#282534] p-5 text-white sm:p-6">
-          <div className="mb-4 flex items-center justify-between">
+          <div className="flex items-center justify-between">
             <div>
               <div className="text-[10px] font-semibold tracking-[.1em] text-[#aaa3bd]">
-                NEXT BEST ACTION
+                FIRST CONTENT BRIEF
               </div>
               <h2 className="mt-1 text-[17px] font-bold">
-                이번 주, 이 3가지만 하세요
+                검사 질문부터 시작하세요
               </h2>
             </div>
             <Sparkles className="size-5 text-[#a99bff]" />
           </div>
-          <div className="space-y-3">
-            {[
-              ['01', '병원 선택 질문 보강', '예상 상담 +11건'],
-              ['02', '도수치료 실비 글 검토', '노출 격차 -18%'],
-              ['03', '원장 전문성 근거 추가', '신뢰도 +9점'],
-            ].map(([n, text, impact]) => (
-              <button
-                key={n}
-                onClick={() =>
-                  n === '01'
-                    ? onDraft(opportunityRows[0].keyword)
-                    : onNavigate(n === '02' ? 'studio' : 'journey')
-                }
-                className="flex w-full items-center gap-3 rounded-xl bg-white/[.065] p-3 text-left hover:bg-white/[.1]"
-              >
-                <span className="text-[10px] font-bold text-[#9d8cff]">
-                  {n}
-                </span>
-                <span className="flex-1 text-xs font-semibold">{text}</span>
-                <span className="text-[10px] text-white/50">{impact}</span>
-                <ArrowRight className="size-3.5 text-white/40" />
-              </button>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      <section className="grid gap-5 xl:grid-cols-[1.5fr_1fr]">
-        <div className="rounded-2xl border border-[#e8e6ee] bg-white p-5 sm:p-6">
-          <div className="mb-4">
-            <h2 className="text-[15px] font-bold">추천 가시성 추이</h2>
-            <p className="mt-1 text-xs text-[#9692a0]">
-              브랜드 언급·추천 순위·인용 품질을 결합한 지표
-            </p>
-          </div>
-          <ChartContainer
-            config={chartConfig}
-            className="h-[210px] w-full aspect-auto"
+          <p className="mt-4 text-xs leading-5 text-white/65">
+            공개 근거가 가장 많이 준비되어 있어 과장 없이 유용한 답변으로
+            전환하기 좋습니다.
+          </p>
+          <button
+            onClick={() => onBrief(opportunities[0].question)}
+            className="mt-4 flex w-full items-center gap-3 rounded-xl bg-white/[.075] p-3 text-left hover:bg-white/[.12]"
           >
-            <AreaChart
-              data={visibilityData}
-              margin={{ left: 0, right: 6, top: 8, bottom: 0 }}
-            >
-              <defs>
-                <linearGradient id="fillScore" x1="0" y1="0" x2="0" y2="1">
-                  <stop
-                    offset="5%"
-                    stopColor="var(--color-score)"
-                    stopOpacity={0.28}
-                  />
-                  <stop
-                    offset="95%"
-                    stopColor="var(--color-score)"
-                    stopOpacity={0.015}
-                  />
-                </linearGradient>
-              </defs>
-              <CartesianGrid vertical={false} strokeDasharray="3 4" />
-              <XAxis
-                dataKey="day"
-                tickLine={false}
-                axisLine={false}
-                tickMargin={10}
-              />
-              <ChartTooltip
-                cursor={false}
-                content={<ChartTooltipContent indicator="line" />}
-              />
-              <Area
-                dataKey="score"
-                type="monotone"
-                fill="url(#fillScore)"
-                stroke="var(--color-score)"
-                strokeWidth={2.5}
-                dot={false}
-              />
-            </AreaChart>
-          </ChartContainer>
-        </div>
-        <div className="overflow-hidden rounded-2xl border border-[#e8e6ee] bg-white">
-          <div className="border-b border-[#efedf3] px-5 py-4">
-            <h2 className="text-[15px] font-bold">새로 발견한 답변 격차</h2>
-            <p className="mt-1 text-xs text-[#9692a0]">
-              인용됐지만 추천되지 않은 질문
-            </p>
-          </div>
-          <div className="divide-y divide-[#f0eef4]">
-            {monitoredQuestions.slice(0, 3).map((item, index) => (
-              <button
-                key={item.question}
-                onClick={() =>
-                  onDraft(opportunityRows[index]?.keyword ?? item.question)
-                }
-                className="block w-full px-5 py-4 text-left hover:bg-[#fcfbff]"
-              >
-                <div className="flex items-start gap-3">
-                  <span className="mt-0.5 grid size-7 shrink-0 place-items-center rounded-lg bg-[#fff1e7] text-[#d87831]">
-                    <TriangleAlert className="size-3.5" />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="line-clamp-2 text-xs font-semibold leading-5">
-                      {item.question}
-                    </p>
-                    <p className="mt-1 text-[10px] text-[#9b97a4]">
-                      경쟁 노출: {item.competitor} · 내 병원 {item.mention}
-                    </p>
-                  </div>
-                </div>
-              </button>
-            ))}
+            <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-[#7562e8] text-xs font-bold">
+              01
+            </span>
+            <span className="flex-1 text-xs font-semibold leading-5">
+              {opportunities[0].question}
+            </span>
+            <ArrowRight className="size-4 text-white/45" />
+          </button>
+          <div className="mt-3 flex items-center gap-2 text-[10px] text-white/50">
+            <ShieldCheck className="size-3.5" /> 의료진 검수 전에는 발행하지
+            않습니다.
           </div>
         </div>
       </section>
@@ -703,60 +725,64 @@ function JourneyStrip({ compact = false }: { compact?: boolean }) {
     <div
       className={`grid gap-2 ${compact ? 'grid-cols-2 sm:grid-cols-5' : 'grid-cols-1 md:grid-cols-5'}`}
     >
-      {journeySteps.map((step, index) => (
+      {clinicData.journey.map((step, index) => (
         <div
-          key={step.label}
+          key={step.stage}
           className="relative rounded-xl border border-[#eceaf1] bg-[#fcfbfd] p-3.5"
         >
           <div className="mb-3 flex items-center justify-between">
             <span className="text-[10px] font-bold text-[#85818f]">
-              {index + 1}. {step.label}
+              {index + 1}. {step.stage}
             </span>
-            <span
-              className="text-[11px] font-bold"
-              style={{ color: step.tone }}
-            >
-              {step.coverage}%
+            <span className="text-[10px] font-bold text-[#6653df]">
+              {step.readiness}
             </span>
           </div>
           <div className="h-1.5 overflow-hidden rounded-full bg-[#ebe9f0]">
             <div
-              className="h-full rounded-full"
-              style={{ width: `${step.coverage}%`, backgroundColor: step.tone }}
+              className="h-full rounded-full bg-[#7562e8]"
+              style={{ width: `${step.readiness}%` }}
             />
           </div>
-          {!compact && (
+          {!compact ? (
             <>
-              <p className="mt-4 min-h-10 text-xs font-semibold leading-5">
-                “{step.example}”
+              <p className="mt-4 min-h-14 text-xs font-semibold leading-5">
+                “{step.question}”
               </p>
-              <p className="mt-2 text-[10px] text-[#9c98a5]">
-                추적 질문 {step.questions}개
-              </p>
+              <div className="mt-2 flex items-center justify-between text-[10px] text-[#9c98a5]">
+                <span>질문 {step.tracked}개</span>
+                <span>{step.status}</span>
+              </div>
             </>
-          )}
-          {index < journeySteps.length - 1 && (
+          ) : null}
+          {index < clinicData.journey.length - 1 ? (
             <ArrowRight className="absolute -right-3 top-1/2 z-10 hidden size-4 -translate-y-1/2 text-[#c8c4d0] md:block" />
-          )}
+          ) : null}
         </div>
       ))}
     </div>
   );
 }
 
-function JourneyView({ onNavigate }: { onNavigate: (view: View) => void }) {
+function JourneyView({
+  onNavigate,
+  onBrief,
+}: {
+  onNavigate: (view: View) => void;
+  onBrief: (question: string) => void;
+}) {
   return (
     <>
-      <PageHeading
+      <Heading
         eyebrow="Patient Question Journey"
-        title="환자가 병원을 선택하기까지의 질문 지도"
-        description="검색어 목록이 아니라 환자의 의사결정 순서로 질문을 묶어, 예약 직전의 노출 공백을 먼저 해결합니다."
+        title="위드유를 찾기 전 환자가 묻는 질문을 정리했습니다"
+        description="현재 수치는 AI 노출 점수가 아니라 공식 홈페이지가 답변 근거를 얼마나 준비하고 있는지 보여주는 초기 콘텐츠 준비도입니다."
         action={
           <Button
             onClick={() => onNavigate('opportunities')}
-            className="h-9 bg-[#6957e8] hover:bg-[#5845d5]"
+            className="bg-[#6957e8] hover:bg-[#5845d5]"
           >
-            기회 12개 보기 <ArrowRight className="size-4" />
+            기회 {opportunities.length}개 보기 <ArrowRight className="size-4" />
           </Button>
         }
       />
@@ -764,73 +790,105 @@ function JourneyView({ onNavigate }: { onNavigate: (view: View) => void }) {
         <JourneyStrip />
       </div>
       <div className="grid gap-5 lg:grid-cols-3">
-        <div className="rounded-2xl border border-[#f1d6df] bg-[#fff9fb] p-5">
-          <div className="flex items-center gap-2 text-[#bd476e]">
-            <Target className="size-4" />
-            <h3 className="text-sm font-bold">가장 큰 공백</h3>
-          </div>
-          <p className="mt-4 text-2xl font-bold tracking-tight">
-            병원 선택 단계
-          </p>
-          <p className="mt-2 text-xs leading-5 text-[#777381]">
-            예약 의도가 가장 높은 16개 질문 중 우리 병원이 추천되는 질문은
-            5개뿐입니다.
-          </p>
-        </div>
-        <div className="rounded-2xl border border-[#e8e6ee] bg-white p-5">
-          <div className="flex items-center gap-2 text-[#5e4bd3]">
-            <MessageCircleQuestion className="size-4" />
-            <h3 className="text-sm font-bold">질문 클러스터</h3>
-          </div>
-          <div className="mt-4 flex flex-wrap gap-2">
-            {[
-              '비수술 가능 여부',
-              '야간 진료',
-              '전문의 경력',
-              '주차·접근성',
-              '당일 검사',
-              '치료 비용',
-            ].map((tag) => (
-              <span
-                key={tag}
-                className="rounded-lg bg-[#f2f0f8] px-2.5 py-1.5 text-[11px] font-medium text-[#615d6b]"
-              >
-                {tag}
+        <Insight
+          icon={Target}
+          title="가장 안전한 시작점"
+          value="검사 이해"
+          description="검사 종류와 공식 근거가 준비되어 첫 브리프에 적합합니다."
+          tone="border-[#ded8fb] bg-[#faf9ff] text-[#5d49d2]"
+        />
+        <Insight
+          icon={MessageCircleQuestion}
+          title="먼저 묶을 질문"
+          value="예약 전 확인"
+          description="예약제·야간진료·의료진·검사를 병원 선택 질문으로 연결합니다."
+          tone="border-[#d9e8f7] bg-[#f8fbff] text-[#397ac5]"
+        />
+        <Insight
+          icon={ShieldAlert}
+          title="주의할 구간"
+          value="치료 비교"
+          description="효과 단정과 재발 방지 표현을 걷어내고 다시 구성해야 합니다."
+          tone="border-[#f1d6df] bg-[#fff9fb] text-[#bd476e]"
+        />
+      </div>
+      <div className="mt-5 rounded-2xl border border-[#e8e6ee] bg-white p-5 sm:p-6">
+        <h2 className="text-[15px] font-bold">첫 질문 세트</h2>
+        <p className="mt-1 text-xs text-[#9692a0]">
+          질문을 선택하면 공식 근거와 금지 표현이 연결된 브리프를 엽니다.
+        </p>
+        <div className="mt-4 grid gap-3 md:grid-cols-2">
+          {opportunities.slice(0, 4).map((item) => (
+            <button
+              key={item.question}
+              onClick={() => onBrief(item.question)}
+              className="flex items-start gap-3 rounded-xl border border-[#eceaf1] p-4 text-left hover:border-[#d6cff7] hover:bg-[#fcfbff]"
+            >
+              <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-[#f0edff] text-[10px] font-bold text-[#5d49d2]">
+                {String(item.priority).padStart(2, '0')}
               </span>
-            ))}
-          </div>
-        </div>
-        <div className="rounded-2xl border border-[#dceee7] bg-[#f8fcfa] p-5">
-          <div className="flex items-center gap-2 text-[#218462]">
-            <TrendingUp className="size-4" />
-            <h3 className="text-sm font-bold">기대 효과</h3>
-          </div>
-          <p className="mt-4 text-2xl font-bold tracking-tight">상담 +23건</p>
-          <p className="mt-2 text-xs leading-5 text-[#777381]">
-            상위 기회 3개의 콘텐츠를 발행하고 현재 전환율을 유지했을 때의 월간
-            추정치입니다.
-          </p>
+              <span className="min-w-0 flex-1">
+                <span className="block text-xs font-semibold leading-5">
+                  {item.question}
+                </span>
+                <span className="mt-1 block text-[10px] text-[#9692a0]">
+                  {item.stage} · 근거 {item.evidence} · 위험 {item.risk}
+                </span>
+              </span>
+              <ArrowRight className="mt-1 size-4 shrink-0 text-[#aaa6b1]" />
+            </button>
+          ))}
         </div>
       </div>
     </>
   );
 }
 
-function OpportunitiesView({
-  onDraft,
+function Insight({
+  icon: Icon,
+  title,
+  value,
+  description,
+  tone,
 }: {
-  onDraft: (keyword: string) => void;
+  icon: typeof Activity;
+  title: string;
+  value: string;
+  description: string;
+  tone: string;
+}) {
+  return (
+    <div className={`rounded-2xl border p-5 ${tone}`}>
+      <div className="flex items-center gap-2">
+        <Icon className="size-4" />
+        <h3 className="text-sm font-bold">{title}</h3>
+      </div>
+      <p className="mt-4 text-2xl font-bold tracking-tight text-[#272431]">
+        {value}
+      </p>
+      <p className="mt-2 text-xs leading-5 text-[#777381]">{description}</p>
+    </div>
+  );
+}
+
+function OpportunitiesView({
+  onBrief,
+}: {
+  onBrief: (question: string) => void;
 }) {
   const [filter, setFilter] = useState('전체');
+  const rows = opportunities.filter(
+    (row) => filter === '전체' || row.stage === filter,
+  );
   return (
     <>
-      <PageHeading
-        eyebrow="Impact Opportunity"
-        title="검색량이 아닌 예약 가능성으로 우선순위를 정했습니다"
-        description="현재 AI 노출 격차, 환자 전환 의도, 의료 근거 준비도를 함께 계산한 병원 전용 기회 점수입니다."
+      <Heading
+        eyebrow="Evidence-led Opportunity"
+        title="검색량을 꾸며내지 않고, 근거가 준비된 질문부터 골랐습니다"
+        description="외부 데이터가 연결되기 전에는 수요를 추정하지 않습니다. 현재 순서는 병원 고유성·환자 유용성·근거 준비도·표현 위험을 기준으로 한 초기 가설입니다."
         action={
-          <div className="flex gap-2">
-            {['전체', '병원 선택', '비용·보험'].map((item) => (
+          <div className="flex flex-wrap gap-2">
+            {['전체', '검사 이해', '병원 선택', '치료 비교'].map((item) => (
               <button
                 key={item}
                 onClick={() => setFilter(item)}
@@ -843,102 +901,91 @@ function OpportunitiesView({
         }
       />
       <div className="overflow-hidden rounded-2xl border border-[#e8e6ee] bg-white">
-        <div className="grid grid-cols-[1fr_auto] border-b border-[#efedf3] px-5 py-4 sm:px-6">
-          <div>
-            <h2 className="text-[15px] font-bold">추천 실행 목록</h2>
-            <p className="mt-1 text-xs text-[#9692a0]">
-              점수 계산: 노출 격차 35% + 예약 의도 35% + 의료 근거 20% + 검색
-              수요 10%
-            </p>
-          </div>
-          <div className="hidden items-center gap-2 text-[10px] text-[#9692a0] sm:flex">
-            <span className="size-2 rounded-full bg-[#2cad77]" /> 오늘 재계산됨
-          </div>
+        <div className="border-b border-[#efedf3] px-5 py-4 sm:px-6">
+          <h2 className="text-[15px] font-bold">초기 실행 후보</h2>
+          <p className="mt-1 text-xs text-[#9692a0]">
+            실제 검색 수요와 AI 노출 격차는 연결 후 재정렬됩니다.
+          </p>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[920px] text-left text-xs">
-            <thead className="bg-[#fbfafe] text-[10px] font-semibold uppercase tracking-[.05em] text-[#9995a2]">
-              <tr>
-                <th className="px-6 py-3">환자 질문·키워드</th>
-                <th className="px-3 py-3">여정 단계</th>
-                <th className="px-3 py-3">월 수요</th>
-                <th className="px-3 py-3">현재 노출</th>
-                <th className="px-3 py-3">예약 의도</th>
-                <th className="px-3 py-3">근거 준비도</th>
-                <th className="px-3 py-3">기회 점수</th>
-                <th className="px-6 py-3"></th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#f0eef4]">
-              {opportunityRows
-                .filter((row) => filter === '전체' || row.stage === filter)
-                .map((item) => (
-                  <tr key={item.keyword} className="hover:bg-[#fcfbff]">
-                    <td className="px-6 py-4">
-                      <div className="font-semibold">{item.keyword}</div>
-                      <div className="mt-1 flex items-center gap-2 text-[10px] text-[#9d99a5]">
-                        <span>광고 위험 {item.risk}</span>
-                        <span>·</span>
-                        <span>예상 작성 8분</span>
-                      </div>
-                    </td>
-                    <td className="px-3 py-4">
-                      <span className="rounded-md bg-[#f1eff6] px-2 py-1 text-[10px] font-medium">
-                        {item.stage}
-                      </span>
-                    </td>
-                    <td className="px-3 py-4 font-semibold">{item.volume}</td>
-                    <td className="px-3 py-4 text-[#d45a63]">
-                      {item.exposure}%
-                    </td>
-                    <td className="px-3 py-4 font-semibold">
-                      {item.conversion}
-                    </td>
-                    <td className="px-3 py-4 font-semibold">{item.trust}</td>
-                    <td className="px-3 py-4">
-                      <span className="inline-grid size-8 place-items-center rounded-full bg-[#eeeaff] text-xs font-bold text-[#5f4dd2]">
-                        {item.score}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <Button
-                        onClick={() => onDraft(item.keyword)}
-                        variant="outline"
-                        size="sm"
-                      >
-                        <Sparkles className="size-3" /> 안전 초안
-                      </Button>
-                    </td>
-                  </tr>
+        <div className="divide-y divide-[#f0eef4]">
+          {rows.map((item) => (
+            <div
+              key={item.question}
+              className="grid gap-4 px-5 py-5 sm:px-6 lg:grid-cols-[52px_1.6fr_1fr_auto] lg:items-center"
+            >
+              <span className="grid size-10 place-items-center rounded-full bg-[#eeeaff] text-sm font-bold text-[#5f4dd2]">
+                {item.priority}
+              </span>
+              <div>
+                <div className="text-sm font-bold leading-5">
+                  {item.question}
+                </div>
+                <p className="mt-1.5 text-[11px] leading-5 text-[#8f8b98]">
+                  {item.reason}
+                </p>
+              </div>
+              <div className="grid grid-cols-3 gap-2 text-center text-[10px]">
+                {[
+                  ['단계', item.stage],
+                  ['근거', item.evidence],
+                  ['위험', item.risk],
+                ].map(([label, value]) => (
+                  <div
+                    key={label}
+                    className="rounded-lg bg-[#f7f6fa] px-2 py-2"
+                  >
+                    <div className="text-[#a09ca8]">{label}</div>
+                    <div className="mt-1 font-bold text-[#5f5b68]">{value}</div>
+                  </div>
                 ))}
-            </tbody>
-          </table>
+              </div>
+              <Button
+                onClick={() => onBrief(item.question)}
+                variant="outline"
+                size="sm"
+              >
+                <FileCheck2 className="size-3.5" /> 브리프
+              </Button>
+            </div>
+          ))}
         </div>
       </div>
+      <InfoNote>
+        월 검색량과 AI 언급률이 비어 있는 것은 오류가 아닙니다. 실제 계정
+        데이터가 없으므로 표시하지 않으며, Search Console과 AI API 연결 후
+        기준선 결과가 채워집니다.
+      </InfoNote>
     </>
   );
 }
 
-function StudioView({ keyword, ready }: { keyword: string; ready: boolean }) {
+function StudioView({ question, ready }: { question: string; ready: boolean }) {
   const [stage, setStage] = useState(ready ? 1 : 0);
-  const [published, setPublished] = useState(false);
+  const sections = [
+    ['한 문장 요약', '진단이나 효과를 단정하지 않고 질문의 범위부터 설명'],
+    ['상담이 필요한 시점', '공개 의료 근거를 추가하고 의료진이 표현 검수'],
+    ['검사·진료 과정', '현재 운영이 확인된 위드유 공식 정보만 연결'],
+    ['위드유에서 확인할 항목', '예약제·의료진·검사 등 출처가 있는 사실'],
+    ['개인차·주의사항', '온라인 정보가 개별 진단을 대신하지 않는다는 안내'],
+    ['출처와 검수자', '근거 URL·확인일·의료진 승인자 표시'],
+  ];
   return (
     <>
-      <PageHeading
+      <Heading
         eyebrow="Medical Content Studio"
-        title="의료진 근거가 포함된 안전한 초안을 만듭니다"
-        description="AI 노출 최적화와 의료광고 안전성을 동시에 확인한 뒤 승인된 채널로만 발행합니다."
+        title="공식 근거와 금지 표현을 함께 묶은 브리프입니다"
+        description="아직 AI 생성 및 CMS 발행 연결 전입니다. 지금은 의료진이 검토할 질문·근거·위험 규칙을 먼저 확정합니다."
         action={
-          <div className="flex items-center gap-2 text-[11px] font-semibold text-[#777381]">
-            <span className="grid size-6 place-items-center rounded-full bg-[#e9f7f0] text-[#248564]">
-              <Check className="size-3.5" />
-            </span>
-            자동 저장됨
-          </div>
+          <Badge
+            variant="outline"
+            className="h-8 gap-1.5 border-[#e0dafb] bg-[#f7f5ff] text-[#5d49d2]"
+          >
+            <ShieldCheck className="size-3.5" /> 의료진 승인 필수
+          </Badge>
         }
       />
       <div className="mb-5 grid gap-2 sm:grid-cols-4">
-        {['기회 선택', '초안 생성', '의료 검토', '승인·발행'].map(
+        {['질문·근거 선택', '의료 브리프', '의료진 검수', 'CMS 발행'].map(
           (item, index) => (
             <div
               key={item}
@@ -954,44 +1001,30 @@ function StudioView({ keyword, ready }: { keyword: string; ready: boolean }) {
           ),
         )}
       </div>
-      <div className="grid gap-5 xl:grid-cols-[1.45fr_.8fr]">
+      <div className="grid gap-5 xl:grid-cols-[1.35fr_.85fr]">
         <div className="rounded-2xl border border-[#e8e6ee] bg-white">
           <div className="border-b border-[#efedf3] p-5 sm:p-6">
             <div className="text-[10px] font-semibold text-[#8f8b99]">
-              TARGET QUESTION
+              TARGET PATIENT QUESTION
             </div>
-            <h2 className="mt-2 text-lg font-bold tracking-tight">{keyword}</h2>
+            <h2 className="mt-2 text-lg font-bold leading-7 tracking-tight">
+              {question}
+            </h2>
             <div className="mt-3 flex flex-wrap gap-2">
-              <Badge variant="secondary">병원 선택</Badge>
-              <Badge variant="outline">월 검색 2.4K</Badge>
-              <Badge className="bg-[#efeaff] text-[#5b48d2]">기회 92</Badge>
+              <Badge variant="secondary">위드유 의원·한의원</Badge>
+              <Badge variant="outline">공식 출처 11개</Badge>
+              <Badge className="bg-[#fff4e7] text-[#b76a20]">
+                수요 측정 전
+              </Badge>
             </div>
           </div>
           <div className="p-5 sm:p-6">
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-sm font-bold">초안 구조</h3>
+              <h3 className="text-sm font-bold">권장 답변 구조</h3>
               <span className="text-[10px] text-[#9995a2]">환자 언어 기준</span>
             </div>
             <div className="space-y-3">
-              {[
-                [
-                  '질문에 대한 한 문장 답변',
-                  '수술 여부는 증상과 영상 검사 결과에 따라 달라집니다.',
-                ],
-                [
-                  '비수술 치료가 가능한 경우',
-                  '보존적 치료의 대상과 치료별 역할',
-                ],
-                [
-                  '병원을 선택할 때 확인할 점',
-                  '전문의 진료·검사 장비·추적 관찰',
-                ],
-                [
-                  '서울바른척추병원의 진료 원칙',
-                  '과장 없이 등록된 병원 정보만 사용',
-                ],
-                ['자주 묻는 질문', '치료 기간·통증·보험 적용 범위'],
-              ].map(([title, desc], index) => (
+              {sections.map(([title, detail], index) => (
                 <div
                   key={title}
                   className="flex items-start gap-3 rounded-xl border border-[#eceaf0] p-3.5"
@@ -1001,44 +1034,46 @@ function StudioView({ keyword, ready }: { keyword: string; ready: boolean }) {
                   </span>
                   <div>
                     <div className="text-xs font-semibold">{title}</div>
-                    <div className="mt-1 text-[11px] text-[#9692a0]">
-                      {desc}
+                    <div className="mt-1 text-[11px] leading-5 text-[#9692a0]">
+                      {detail}
                     </div>
                   </div>
                 </div>
               ))}
             </div>
-            <div className="mt-5 flex justify-end gap-2">
-              <Button variant="outline">미리보기</Button>
+            <div className="mt-5 flex flex-col justify-end gap-2 sm:flex-row">
+              <Button variant="outline">근거 11개 보기</Button>
               <Button
-                onClick={() => setStage(Math.min(stage + 1, 3))}
+                onClick={() => setStage(2)}
                 className="bg-[#6957e8] hover:bg-[#5845d5]"
               >
-                {stage < 2 ? '초안 생성하기' : '의료 검토 완료'}{' '}
-                <ArrowRight className="size-4" />
+                검수 화면 미리보기 <ArrowRight className="size-4" />
               </Button>
             </div>
-            {published && (
-              <div className="mt-4 flex items-center gap-2 rounded-xl border border-[#cfeadf] bg-[#f4fbf7] p-3 text-xs font-semibold text-[#247c5e]">
-                <CheckCircle2 className="size-4" /> 병원 공식 블로그 발행 예약이
-                완료되었습니다.
+            {stage >= 2 ? (
+              <div className="mt-4 flex items-start gap-2 rounded-xl border border-[#cfeadf] bg-[#f4fbf7] p-3 text-xs leading-5 text-[#247c5e]">
+                <CheckCircle2 className="mt-0.5 size-4 shrink-0" />
+                브리프가 의료진 검수 단계로 준비되었습니다. 실제 저장과 담당자
+                배정은 데이터베이스 연결 후 활성화됩니다.
               </div>
-            )}
+            ) : null}
           </div>
         </div>
         <div className="space-y-5">
           <div className="rounded-2xl border border-[#e8e6ee] bg-white p-5">
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-sm font-bold">의료 신뢰도 체크</h3>
-              <span className="text-lg font-bold text-[#258967]">93</span>
+              <h3 className="text-sm font-bold">사용 가능한 근거</h3>
+              <span className="text-lg font-bold text-[#258967]">
+                {counts.source_confirmed}
+              </span>
             </div>
             <div className="space-y-3">
               {[
-                ['전문의 프로필 연결', true],
-                ['치료 효과 근거 확인', true],
-                ['개인별 차이 고지', true],
-                ['비급여 비용 출처', false],
-                ['과장·최상급 표현 없음', true],
+                ['병원명·주소·연락처', true],
+                ['예약제·월요일 야간진료', true],
+                ['진료 분야 페이지', true],
+                ['검사별 현재 운영 여부', false],
+                ['의료진 자격 증빙', false],
               ].map(([label, ok]) => (
                 <div
                   key={String(label)}
@@ -1057,43 +1092,58 @@ function StudioView({ keyword, ready }: { keyword: string; ready: boolean }) {
                   <span
                     className={`text-[10px] font-semibold ${ok ? 'text-[#258967]' : 'text-[#d77832]'}`}
                   >
-                    {ok ? '통과' : '확인'}
+                    {ok ? '사용 가능' : '확인 필요'}
                   </span>
                 </div>
               ))}
             </div>
           </div>
-          <div className="rounded-2xl border border-[#e8e6ee] bg-white p-5">
-            <h3 className="text-sm font-bold">승인 후 발행</h3>
-            <p className="mt-2 text-[11px] leading-5 text-[#8f8b98]">
-              검토가 끝난 콘텐츠만 선택한 채널에 예약 발행됩니다.
-            </p>
-            <div className="mt-4 space-y-2">
-              {['병원 공식 홈페이지', 'MediAnswer 블로그', 'WordPress'].map(
-                (channel, index) => (
-                  <label
-                    key={channel}
-                    className="flex items-center gap-3 rounded-xl border border-[#eceaf0] p-3 text-xs font-semibold"
-                  >
-                    <input
-                      type="checkbox"
-                      defaultChecked={index < 2}
-                      className="accent-[#6957e8]"
-                    />
-                    {channel}
-                  </label>
-                ),
-              )}
+          <div className="rounded-2xl border border-[#f1d6df] bg-[#fffafb] p-5">
+            <div className="flex items-center gap-2 text-[#bd476e]">
+              <LockKeyhole className="size-4" />
+              <h3 className="text-sm font-bold">자동 차단 문구</h3>
             </div>
-            <Button
-              onClick={() => {
-                setStage(3);
-                setPublished(true);
-              }}
-              disabled={stage < 2}
-              className="mt-4 w-full bg-[#252331] text-white hover:bg-[#343043]"
-            >
-              <Send className="size-4" /> 승인 및 예약 발행
+            <div className="mt-4 flex flex-wrap gap-2">
+              {[
+                '92% 호전',
+                '면역세포 증가',
+                '국내 유일',
+                '완치',
+                '근원치료',
+                '재발 방지',
+              ].map((claim) => (
+                <span
+                  key={claim}
+                  className="rounded-lg border border-[#f0d5d8] bg-white px-2.5 py-1.5 text-[10px] font-semibold text-[#b84c57]"
+                >
+                  {claim}
+                </span>
+              ))}
+            </div>
+            <p className="mt-3 text-[10px] leading-4 text-[#9a777d]">
+              원자료와 의료·광고 검토가 끝나기 전에는 초안에도 넣지 않습니다.
+            </p>
+          </div>
+          <div className="rounded-2xl border border-[#e8e6ee] bg-white p-5">
+            <h3 className="text-sm font-bold">발행 연결 상태</h3>
+            <div className="mt-4 space-y-2">
+              {[
+                ['AI 초안 생성', 'API 키 필요'],
+                ['의료진 승인 저장', 'DB 연결 필요'],
+                ['WordPress 초안 발행', '권한 필요'],
+              ].map(([label, status]) => (
+                <div
+                  key={label}
+                  className="flex items-center gap-3 rounded-xl border border-[#eceaf0] p-3 text-xs"
+                >
+                  <span className="size-2 rounded-full bg-[#e59b42]" />
+                  <span className="flex-1 font-semibold">{label}</span>
+                  <span className="text-[10px] text-[#9a96a3]">{status}</span>
+                </div>
+              ))}
+            </div>
+            <Button disabled className="mt-4 w-full">
+              <LockKeyhole className="size-4" /> 승인·연결 후 발행
             </Button>
           </div>
         </div>
@@ -1102,113 +1152,472 @@ function StudioView({ keyword, ready }: { keyword: string; ready: boolean }) {
   );
 }
 
-function MonitorView() {
-  const [engine, setEngine] = useState('전체 엔진');
+function MonitorView({ onNavigate }: { onNavigate: (view: View) => void }) {
+  const [query, setQuery] = useState('');
+  const rows = clinicData.monitorQuestions.filter((item) =>
+    item.question.toLowerCase().includes(query.toLowerCase()),
+  );
   return (
     <>
-      <PageHeading
+      <Heading
         eyebrow="Answer-level Monitoring"
-        title="점수가 아니라 실제 AI 답변을 확인하세요"
-        description="질문별 브랜드 언급, 인용 페이지, 경쟁 병원을 한 줄에서 비교해 변화의 원인을 추적합니다."
+        title="기준선 질문은 준비됐고, 실제 AI 측정 연결을 기다립니다"
+        description="API 연결 전에는 언급률과 인용률을 표시하지 않습니다. 연결 후 공급자·모델·실행시각·원문·출처까지 저장합니다."
         action={
-          <button
-            onClick={() =>
-              setEngine(engine === '전체 엔진' ? 'ChatGPT' : '전체 엔진')
-            }
-            className="flex h-9 items-center gap-2 rounded-lg border border-[#dfdde6] bg-white px-3 text-xs font-medium"
-          >
-            {engine}
-            <ChevronDown className="size-3.5" />
-          </button>
+          <Button onClick={() => onNavigate('settings')} variant="outline">
+            <Link2 className="size-4" /> AI 연결 보기
+          </Button>
         }
       />
       <div className="mb-5 grid gap-4 sm:grid-cols-3">
-        {[
-          ['추적 질문', '81개', MessageCircleQuestion],
-          ['브랜드 추천', '47%', Target],
-          ['신뢰 인용', '61%', FileCheck2],
-        ].map(([label, value, Icon]) => (
-          <div
-            key={String(label)}
-            className="flex items-center gap-4 rounded-2xl border border-[#e8e6ee] bg-white p-5"
-          >
-            <span className="grid size-10 place-items-center rounded-xl bg-[#f0edff] text-[#6552dc]">
-              <Icon className="size-5" />
-            </span>
-            <div>
-              <div className="text-xs text-[#898593]">{String(label)}</div>
-              <div className="mt-1 text-xl font-bold">{String(value)}</div>
-            </div>
-          </div>
-        ))}
+        <Metric
+          label="기준선 질문"
+          value={String(clinicData.monitorQuestions.length)}
+          unit="개"
+          note="위드유 진료영역 기준"
+          icon={MessageCircleQuestion}
+          tone="bg-[#efecff] text-[#6653df]"
+        />
+        <Metric
+          label="측정 완료"
+          value="0"
+          unit="개"
+          note="AI API 연결 후 시작"
+          icon={Target}
+          tone="bg-[#fff1e6] text-[#d77832]"
+        />
+        <Metric
+          label="예정 공급자"
+          value="3"
+          unit="개"
+          note="OpenAI부터 순차 연결"
+          icon={Bot}
+          tone="bg-[#e8f7f1] text-[#218462]"
+        />
       </div>
       <div className="overflow-hidden rounded-2xl border border-[#e8e6ee] bg-white">
-        <div className="flex items-center gap-3 border-b border-[#efedf3] p-4">
+        <div className="flex flex-col gap-3 border-b border-[#efedf3] p-4 sm:flex-row sm:items-center">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#aaa6b1]" />
             <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
               aria-label="질문 검색"
               placeholder="환자 질문 검색"
               className="h-9 w-full rounded-lg border border-[#dfdde6] bg-[#fbfafc] pl-9 pr-3 text-xs outline-none focus:border-[#8170e9]"
             />
           </div>
-          <Button variant="outline">
-            <ClipboardCheck className="size-4" /> 변화만 보기
-          </Button>
+          <Badge
+            variant="outline"
+            className="h-8 justify-center gap-1.5 text-[#a56a2c]"
+          >
+            <Clock3 className="size-3.5" /> 기준선 대기
+          </Badge>
         </div>
         <div className="overflow-x-auto">
-          <table className="w-full min-w-[900px] text-left text-xs">
+          <table className="w-full min-w-[850px] text-left text-xs">
             <thead className="bg-[#fbfafe] text-[10px] uppercase tracking-[.05em] text-[#9995a2]">
               <tr>
                 <th className="px-6 py-3">환자 질문</th>
                 <th className="px-3 py-3">여정</th>
-                <th className="px-3 py-3">AI 엔진</th>
+                <th className="px-3 py-3">예정 엔진</th>
                 <th className="px-3 py-3">브랜드 언급</th>
-                <th className="px-3 py-3">내 페이지 인용</th>
-                <th className="px-3 py-3">상위 경쟁 병원</th>
-                <th className="px-6 py-3">변화</th>
+                <th className="px-3 py-3">공식 페이지 인용</th>
+                <th className="px-6 py-3">상태</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#f0eef4]">
-              {monitoredQuestions.map((item, index) => (
+              {rows.map((item) => (
                 <tr key={item.question} className="hover:bg-[#fcfbff]">
-                  <td className="max-w-[320px] px-6 py-4 font-semibold leading-5">
+                  <td className="max-w-[340px] px-6 py-4 font-semibold leading-5">
                     {item.question}
                   </td>
                   <td className="px-3 py-4">
                     <Badge variant="secondary">{item.stage}</Badge>
                   </td>
                   <td className="px-3 py-4">
-                    <div className="flex -space-x-1">
-                      {item.engines.map((name) => (
+                    <div className="flex flex-wrap gap-1.5">
+                      {item.providers.map((provider) => (
                         <span
-                          key={name}
-                          title={name}
-                          className="grid size-6 place-items-center rounded-full border-2 border-white bg-[#eeeaf9] text-[8px] font-bold text-[#5b48d2]"
+                          key={provider}
+                          className="rounded-md bg-[#eeeaf9] px-2 py-1 text-[9px] font-bold text-[#5b48d2]"
                         >
-                          {name[0]}
+                          {provider}
                         </span>
                       ))}
                     </div>
                   </td>
-                  <td className="px-3 py-4 font-bold text-[#5f4dd2]">
-                    {item.mention}
-                  </td>
-                  <td className="px-3 py-4 font-bold text-[#248564]">
-                    {item.citation}
-                  </td>
-                  <td className="px-3 py-4">{item.competitor}</td>
-                  <td className="px-6 py-4">
-                    <span
-                      className={`font-semibold ${index % 2 === 0 ? 'text-[#d45a63]' : 'text-[#258967]'}`}
-                    >
-                      {index % 2 === 0 ? '▼ 1' : '▲ 2'}
-                    </span>
+                  <td className="px-3 py-4 text-[#aaa6b1]">—</td>
+                  <td className="px-3 py-4 text-[#aaa6b1]">—</td>
+                  <td className="px-6 py-4 font-semibold text-[#b2702d]">
+                    {item.status}
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
+        </div>
+      </div>
+      <InfoNote>
+        API 측정은 소비자가 보는 ChatGPT·Google AI 웹 화면과 완전히 같지 않을 수
+        있습니다. 공급자·모델·시간 조건을 저장한 “API 기반 대리 측정”으로
+        표시합니다.
+      </InfoNote>
+    </>
+  );
+}
+
+function InfoNote({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="mt-4 flex items-start gap-3 rounded-xl border border-[#e3defa] bg-[#f8f6ff] p-4 text-xs leading-5 text-[#6b637c]">
+      <CircleHelp className="mt-0.5 size-4 shrink-0 text-[#6957e8]" />
+      <span>{children}</span>
+    </div>
+  );
+}
+
+function KnowledgeView() {
+  const [query, setQuery] = useState('');
+  const [filter, setFilter] = useState<'all' | FactStatus>('all');
+  const rows = useMemo(() => {
+    const normalized = query.trim().toLowerCase();
+    return facts.filter((fact) => {
+      const byStatus = filter === 'all' || fact.status === filter;
+      const byQuery =
+        !normalized ||
+        [fact.category, fact.label, fact.value, fact.note, fact.sourceTitle]
+          .join(' ')
+          .toLowerCase()
+          .includes(normalized);
+      return byStatus && byQuery;
+    });
+  }, [filter, query]);
+  return (
+    <>
+      <Heading
+        eyebrow="Hospital Knowledge Base"
+        title="위드유 공식 정보를 출처와 검수 상태별로 저장했습니다"
+        description="‘공식 출처 확인’은 병원 홈페이지 게시 사실을 확인했다는 뜻이며, 치료 효과가 독립적으로 검증되었다는 의미는 아닙니다."
+        action={
+          <a
+            href={clinicData.hospital.website}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex h-9 items-center gap-2 rounded-lg border border-[#dfdde6] bg-white px-3 text-xs font-semibold text-[#625e6c] hover:bg-[#f8f7fa]"
+          >
+            공식 사이트 <ExternalLink className="size-3.5" />
+          </a>
+        }
+      />
+      <section className="mb-5 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {(Object.keys(statusMeta) as FactStatus[]).map((status) => {
+          const meta = statusMeta[status];
+          return (
+            <button
+              key={status}
+              onClick={() => setFilter(filter === status ? 'all' : status)}
+              className={`rounded-2xl border p-4 text-left transition ${filter === status ? meta.tone : 'border-[#e8e6ee] bg-white hover:border-[#d7d2e3]'}`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold">{meta.label}</span>
+                <span className={`size-2 rounded-full ${meta.dot}`} />
+              </div>
+              <div className="mt-3 text-2xl font-bold">{counts[status]}</div>
+              <p className="mt-1 text-[10px] leading-4 text-[#918d9a]">
+                {meta.description}
+              </p>
+            </button>
+          );
+        })}
+      </section>
+      <div className="mb-5 grid gap-5 xl:grid-cols-[1.5fr_1fr]">
+        <div className="rounded-2xl border border-[#e8e6ee] bg-white p-5 sm:p-6">
+          <div className="mb-4 flex items-center gap-2">
+            <Hospital className="size-4 text-[#6957e8]" />
+            <h2 className="text-[15px] font-bold">병원 기본 프로필</h2>
+          </div>
+          <div className="grid gap-x-6 gap-y-4 sm:grid-cols-2">
+            {[
+              ['병원명', clinicData.hospital.brandName],
+              ['진료 분야', clinicData.hospital.category],
+              ['주소', clinicData.hospital.address],
+              ['대표전화', clinicData.hospital.phone],
+              ['진료 방식', clinicData.hospital.bookingMode],
+              ['수집 확인일', clinicData.hospital.collectedAt],
+            ].map(([label, value]) => (
+              <div key={label}>
+                <div className="text-[10px] font-semibold text-[#9a96a3]">
+                  {label}
+                </div>
+                <div className="mt-1 text-xs font-semibold leading-5">
+                  {value}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        <div className="rounded-2xl border border-[#e8e6ee] bg-white p-5 sm:p-6">
+          <div className="mb-4 flex items-center gap-2">
+            <Stethoscope className="size-4 text-[#6957e8]" />
+            <h2 className="text-[15px] font-bold">의료진</h2>
+          </div>
+          <div className="space-y-3">
+            {clinicData.practitioners.map((person) => (
+              <a
+                key={person.name}
+                href={person.sourceUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-start gap-3 rounded-xl border border-[#eceaf1] p-3 hover:bg-[#fcfbff]"
+              >
+                <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-[#eef2ff] text-xs font-bold text-[#5d49d2]">
+                  {person.name[0]}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block text-xs font-bold">
+                    {person.name} 원장
+                  </span>
+                  <span className="mt-0.5 block text-[10px] text-[#777381]">
+                    {person.credential}
+                  </span>
+                  <span className="mt-1 block text-[9px] font-semibold text-[#b2702d]">
+                    자격 증빙 확인 대기
+                  </span>
+                </span>
+                <ExternalLink className="mt-1 size-3.5 text-[#aaa6b1]" />
+              </a>
+            ))}
+          </div>
+        </div>
+      </div>
+      <div className="overflow-hidden rounded-2xl border border-[#e8e6ee] bg-white">
+        <div className="flex flex-col gap-3 border-b border-[#efedf3] p-4 sm:flex-row sm:items-center">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#aaa6b1]" />
+            <input
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+              aria-label="지식 검색"
+              placeholder="병원명, 진료시간, 검사, 치료, 금지 표현 검색"
+              className="h-9 w-full rounded-lg border border-[#dfdde6] bg-[#fbfafc] pl-9 pr-3 text-xs outline-none focus:border-[#8170e9]"
+            />
+          </div>
+          <div className="flex items-center gap-2 text-[10px] text-[#8f8b98]">
+            <RefreshCw className="size-3.5" /> {clinicData.hospital.collectedAt}{' '}
+            확인
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[980px] text-left text-xs">
+            <thead className="bg-[#fbfafe] text-[10px] uppercase tracking-[.05em] text-[#9995a2]">
+              <tr>
+                <th className="px-6 py-3">분류·항목</th>
+                <th className="px-3 py-3">저장된 값</th>
+                <th className="px-3 py-3">검수 상태</th>
+                <th className="px-3 py-3">메모</th>
+                <th className="px-6 py-3">출처</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-[#f0eef4]">
+              {rows.map((fact) => {
+                const meta = statusMeta[fact.status];
+                return (
+                  <tr key={fact.id} className="align-top hover:bg-[#fcfbff]">
+                    <td className="px-6 py-4">
+                      <div className="text-[10px] text-[#9692a0]">
+                        {fact.category}
+                      </div>
+                      <div className="mt-1 font-bold">{fact.label}</div>
+                    </td>
+                    <td className="max-w-[290px] px-3 py-4 font-medium leading-5">
+                      {fact.value}
+                    </td>
+                    <td className="px-3 py-4">
+                      <span
+                        className={`inline-flex items-center gap-1.5 whitespace-nowrap rounded-full border px-2.5 py-1 text-[9px] font-bold ${meta.tone}`}
+                      >
+                        <span className={`size-1.5 rounded-full ${meta.dot}`} />
+                        {meta.label}
+                      </span>
+                    </td>
+                    <td className="max-w-[330px] px-3 py-4 text-[10px] leading-5 text-[#817d8a]">
+                      {fact.note}
+                    </td>
+                    <td className="px-6 py-4">
+                      <a
+                        href={fact.sourceUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 whitespace-nowrap text-[10px] font-semibold text-[#6957e8] hover:underline"
+                      >
+                        {fact.sourceTitle} <ExternalLink className="size-3" />
+                      </a>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+        {!rows.length ? (
+          <div className="p-10 text-center text-sm text-[#9692a0]">
+            조건에 맞는 지식 항목이 없습니다.
+          </div>
+        ) : null}
+      </div>
+    </>
+  );
+}
+
+function SettingsView() {
+  const [selected, setSelected] = useState('Google Search Console');
+  const current = clinicData.integrations.find(
+    (item) => item.name === selected,
+  );
+  const guide: Record<string, string[]> = {
+    '병원 홈페이지': [
+      '공식 공개 페이지 11개를 등록했습니다.',
+      '다음 수집부터 변경·신규 페이지를 구분합니다.',
+      '후기와 상담 게시물의 개인정보는 수집하지 않습니다.',
+    ],
+    'Google Search Console': [
+      '병원 홈페이지가 등록된 Google 계정의 OAuth 승인이 필요합니다.',
+      '검색어·페이지·노출·클릭만 읽는 최소 권한으로 연결합니다.',
+      '연결 후 기회 질문을 실제 수요 기준으로 재정렬합니다.',
+    ],
+    'AI 답변 모니터': [
+      'OpenAI부터 연결하고 이후 다른 공급자를 추가합니다.',
+      'API 키는 서버 비밀 저장소에만 등록합니다.',
+      '질문·모델·시간·원문·인용 출처를 함께 저장합니다.',
+    ],
+    'WordPress CMS': [
+      '현재 홈페이지에서 WordPress 구조가 감지되었습니다.',
+      '새 글을 초안으로만 생성하는 최소 권한이 필요합니다.',
+      '의료진 승인 전에는 발행 요청을 차단합니다.',
+    ],
+    '전환 측정': [
+      '전화 클릭·온라인 예약·상담 완료 중 측정할 항목을 정합니다.',
+      '환자정보 없이 익명 이벤트와 집계값만 저장합니다.',
+      '질문→콘텐츠→유입→상담 흐름으로 성과를 연결합니다.',
+    ],
+  };
+  return (
+    <>
+      <Heading
+        eyebrow="Connections & Governance"
+        title="위드유 실측을 시작하려면 세 가지 권한이 필요합니다"
+        description="홈페이지 수집은 완료했습니다. 다음은 검색 데이터, AI 기준선, CMS 초안 발행 순서입니다. API 키와 비밀번호는 이 화면에 입력하지 않습니다."
+      />
+      <div className="grid gap-5 xl:grid-cols-[1.2fr_.8fr]">
+        <div className="space-y-3">
+          {clinicData.integrations.map((item, index) => {
+            const connected = item.status === 'connected';
+            const detected = item.status === 'detected';
+            return (
+              <button
+                key={item.name}
+                onClick={() => setSelected(item.name)}
+                className={`flex w-full items-center gap-4 rounded-2xl border bg-white p-4 text-left transition sm:p-5 ${selected === item.name ? 'border-[#cfc6fb] shadow-[0_4px_18px_rgba(90,70,200,.08)]' : 'border-[#e8e6ee] hover:border-[#d8d3e2]'}`}
+              >
+                <span
+                  className={`grid size-10 shrink-0 place-items-center rounded-xl ${connected ? 'bg-[#e8f7f1] text-[#218462]' : detected ? 'bg-[#eef3ff] text-[#4f67bb]' : 'bg-[#fff2e7] text-[#cc7837]'}`}
+                >
+                  {index === 0 ? (
+                    <Globe2 className="size-5" />
+                  ) : index === 1 ? (
+                    <Search className="size-5" />
+                  ) : index === 2 ? (
+                    <Bot className="size-5" />
+                  ) : index === 3 ? (
+                    <FileText className="size-5" />
+                  ) : (
+                    <Target className="size-5" />
+                  )}
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-center gap-2">
+                    <span className="text-sm font-bold">{item.name}</span>
+                    <span
+                      className={`size-2 rounded-full ${connected ? 'bg-[#2cad77]' : detected ? 'bg-[#7185d4]' : 'bg-[#e59b42]'}`}
+                    />
+                  </span>
+                  <span className="mt-1 block text-[11px] leading-5 text-[#8f8b98]">
+                    {item.detail}
+                  </span>
+                </span>
+                <span className="hidden shrink-0 text-[10px] font-bold text-[#777381] sm:block">
+                  {item.nextAction}
+                </span>
+                <ArrowRight className="size-4 shrink-0 text-[#aaa6b1]" />
+              </button>
+            );
+          })}
+        </div>
+        <div className="h-fit rounded-2xl border border-[#e8e6ee] bg-white p-5 sm:p-6 xl:sticky xl:top-[100px]">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-[10px] font-semibold tracking-[.08em] text-[#9a96a3]">
+                CONNECTION GUIDE
+              </div>
+              <h2 className="mt-1 text-lg font-bold">{selected}</h2>
+            </div>
+            <span className="grid size-9 place-items-center rounded-xl bg-[#f0edff] text-[#5d49d2]">
+              <KeyRound className="size-4" />
+            </span>
+          </div>
+          <p className="mt-3 text-xs leading-5 text-[#777381]">
+            {current?.detail}
+          </p>
+          <div className="mt-5 space-y-3">
+            {(guide[selected] ?? []).map((item, index) => (
+              <div key={item} className="flex items-start gap-3">
+                <span className="grid size-6 shrink-0 place-items-center rounded-full bg-[#f0edff] text-[10px] font-bold text-[#5d49d2]">
+                  {index + 1}
+                </span>
+                <p className="pt-0.5 text-xs leading-5 text-[#625e6c]">
+                  {item}
+                </p>
+              </div>
+            ))}
+          </div>
+          <div className="mt-5 rounded-xl border border-[#f0dfca] bg-[#fff9ef] p-3 text-[10px] leading-5 text-[#956333]">
+            <div className="mb-1 flex items-center gap-1.5 font-bold">
+              <ShieldCheck className="size-3.5" /> 보안 원칙
+            </div>
+            API 키·CMS 비밀번호·환자정보는 채팅이나 브라우저 코드에 저장하지
+            않습니다.
+          </div>
+          <Button disabled className="mt-4 w-full">
+            {current?.nextAction ?? '연결 준비'}
+          </Button>
+          <p className="mt-2 text-center text-[9px] text-[#aaa6b1]">
+            보안 저장소 준비 후 활성화됩니다.
+          </p>
+        </div>
+      </div>
+      <div className="mt-5 rounded-2xl border border-[#e8e6ee] bg-white p-5 sm:p-6">
+        <h2 className="text-[15px] font-bold">권장 연결 순서</h2>
+        <p className="mt-1 text-xs text-[#9692a0]">
+          검색 수요를 확인하고 AI 기준선을 측정한 뒤 승인된 초안만 CMS로
+          보냅니다.
+        </p>
+        <div className="mt-4 flex flex-wrap items-center gap-2 text-[10px] font-semibold text-[#625e6c]">
+          {[
+            '병원 검수',
+            'Search Console',
+            'OpenAI',
+            'WordPress',
+            '전환 측정',
+          ].map((item, index) => (
+            <div key={item} className="flex items-center gap-2">
+              <span className="rounded-lg bg-[#f1eff6] px-2.5 py-1.5">
+                {index + 1}. {item}
+              </span>
+              {index < 4 ? (
+                <ArrowRight className="size-3 text-[#b4b0bb]" />
+              ) : null}
+            </div>
+          ))}
         </div>
       </div>
     </>
