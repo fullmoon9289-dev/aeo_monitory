@@ -47,9 +47,11 @@ export default defineConfig(async () => {
 
   return {
     css: { postcss: { plugins: [tailwindcss()] } },
-    server: isCodexSeatbeltSandbox
-      ? { watch: { useFsEvents: false, usePolling: true } }
-      : undefined,
+    server: useLightPreview
+      ? { host: '127.0.0.1', watch: { useFsEvents: false, usePolling: true } }
+      : isCodexSeatbeltSandbox
+        ? { watch: { useFsEvents: false, usePolling: true } }
+        : undefined,
     plugins: [
       vinext(),
       sites(),

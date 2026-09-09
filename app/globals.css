@@ -25,7 +25,7 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
-  --radius-sm: calc(var(--radius) * .7);
+  --radius-sm: calc(var(--radius) * 0.7);
   --radius-md: var(--radius);
   --radius-lg: calc(var(--radius) * 1.25);
   --radius-xl: calc(var(--radius) * 1.6);
@@ -51,11 +51,25 @@
   --border: #e8e6ee;
   --input: #dfdde6;
   --ring: #7562e8;
-  --radius: .625rem;
+  --radius: 0.625rem;
 }
 
-* { border-color: var(--border); }
-html { background: var(--background); }
-body { margin: 0; background: var(--background); color: var(--foreground); font-family: var(--font-geist-sans), Arial, sans-serif; }
-button { cursor: pointer; }
-::selection { background: #dcd5ff; color: #36268f; }
+* {
+  border-color: var(--border);
+}
+html {
+  background: var(--background);
+}
+body {
+  margin: 0;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-geist-sans), Arial, sans-serif;
+}
+button {
+  cursor: pointer;
+}
+::selection {
+  background: #dcd5ff;
+  color: #36268f;
+}
