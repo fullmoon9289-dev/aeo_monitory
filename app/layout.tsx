@@ -22,7 +22,7 @@ export const metadata: Metadata = {
     description: '위드유 의원·한의원 AEO 온보딩과 안전한 의료 지식베이스',
     images: [
       {
-        url: '/og.png',
+        url: '/og.jpg',
         width: 1200,
         height: 630,
         alt: 'MediAnswer 병원 AEO 대시보드',
@@ -33,7 +33,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'MediAnswer | 병원 AEO 플랫폼',
     description: '위드유 의원·한의원 AEO 온보딩과 안전한 의료 지식베이스',
-    images: ['/og.png'],
+    images: ['/og.jpg'],
   },
 };
 
