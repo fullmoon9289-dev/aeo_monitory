@@ -418,6 +418,16 @@
       "sourceTitle": "공식 홈페이지",
       "sourceUrl": "https://www.withyouclinic.com/",
       "note": "개인차와 불확실성을 반영하지 않은 단정 표현 금지"
+    },
+    {
+      "id": "fact-034",
+      "category": "검사 주의",
+      "label": "식품 Total IgG",
+      "value": "검사 결과로 음식 알레르기·불내증 또는 안전·비안전 음식을 구분하는 설명",
+      "status": "blocked_claim",
+      "sourceTitle": "AAAAI 식품 IgG 공식 설명",
+      "sourceUrl": "https://www.aaaai.org/tools-for-the-public/conditions-library/allergies/igg-food-test",
+      "note": "공신력 있는 권고와 충돌하므로 기존 검사 페이지 정정 및 의료진 검토 전 콘텐츠 사용 금지"
     }
   ],
   "journey": [
@@ -439,8 +449,8 @@
       "stage": "검사 이해",
       "question": "아토피 검사에는 어떤 종류가 있고 언제 필요한가요?",
       "readiness": 78,
-      "tracked": 4,
-      "status": "초안 가능"
+      "tracked": 6,
+      "status": "검수 대기"
     },
     {
       "stage": "치료 비교",
@@ -462,9 +472,9 @@
       "priority": 1,
       "question": "아토피 검사에는 어떤 종류가 있고 언제 필요한가요?",
       "stage": "검사 이해",
-      "reason": "공식 검사 페이지는 상세하지만 환자의 검사 선택 질문에 대한 짧은 답변 구조가 부족합니다.",
-      "evidence": "높음",
-      "risk": "보통",
+      "reason": "공개 웹 결과군에 공식 페이지가 보이지 않았고 기존 식품 IgG 설명은 정정이 필요합니다. 근거형 초안 1건을 준비했습니다.",
+      "evidence": "공식 근거 6개",
+      "risk": "높음",
       "demand": "Search Console 연결 필요"
     },
     {
@@ -567,5 +577,241 @@
       "detail": "전화·예약·상담 완료 이벤트 정의 필요",
       "nextAction": "측정 항목 선택"
     }
-  ]
+  ],
+  "publicWebBaseline": {
+    "method": "public web search proxy",
+    "collectedAt": "2026-09-10",
+    "disclaimer": "개인화 검색·지도팩·검색량·실제 AI 답변 순위가 아니라, 동일 시점의 공개 웹 검색 결과군에서 공식 도메인 노출 여부를 확인한 진단입니다.",
+    "summary": {
+      "queries": 5,
+      "officialDomainPresent": 1,
+      "nonBrandGaps": 4
+    },
+    "rows": [
+      {
+        "question": "위드유 의원·한의원은 아토피를 어떻게 진료하나요?",
+        "query": "\"위드유 의원\" \"아토피\"",
+        "stage": "브랜드 탐색",
+        "officialDomainPresent": true,
+        "observedResult": "공식 의료진·통합치료·아토피 페이지가 결과군에 노출",
+        "gap": "경력 연수와 효과 주장이 여러 공식 페이지에서 서로 다름",
+        "action": "핵심 사실을 한 canonical 소개 페이지로 통합하고 근거 없는 효과 표현을 낮추기",
+        "referenceUrl": "https://www.withyouclinic.com/"
+      },
+      {
+        "question": "강남에서 아토피를 진료하는 병원은 어디인가요?",
+        "query": "강남 아토피 병원",
+        "stage": "병원 선택",
+        "officialDomainPresent": false,
+        "observedResult": "병원 목록·지역형 경쟁 페이지·의료상담 Q&A가 우선 노출",
+        "gap": "위치·의료진·진료범위·예약 정보를 한 번에 답하는 페이지가 없음",
+        "action": "강남·도곡동 아토피 진료 전 확인 가이드와 일관된 NAP 구조화 데이터 만들기",
+        "referenceUrl": "https://www.withyouclinic.com/withyou/location/"
+      },
+      {
+        "question": "아토피 검사는 어떤 종류가 있고 언제 필요한가요?",
+        "query": "아토피 검사는 어떤 종류가 있나요",
+        "stage": "검사 이해",
+        "officialDomainPresent": false,
+        "observedResult": "환자용 가이드·FAQ형 의료기관 설명·전문가 Q&A가 우선 노출",
+        "gap": "검사 적응증·양성의 한계·사전 준비·불필요한 경우 설명이 부족",
+        "action": "검사 선택표와 결과 해석 한계를 앞에 둔 근거형 가이드 발행",
+        "referenceUrl": "https://www.withyouclinic.com/accurate-inspection/"
+      },
+      {
+        "question": "만성 두드러기는 언제 병원에 가야 하나요?",
+        "query": "만성 두드러기는 언제 병원에 가야 하나요",
+        "stage": "진료 판단",
+        "officialDomainPresent": false,
+        "observedResult": "전문의 Q&A·검사 필요 여부 설명 콘텐츠가 우선 노출",
+        "gap": "응급 신호·당일 진료 신호·6주 기준·진료 전 기록 항목이 부족",
+        "action": "상단 직접 답변과 응급 신호를 포함한 진료 판단형 FAQ 만들기",
+        "referenceUrl": "https://www.withyouclinic.com/treat-well/hives/"
+      },
+      {
+        "question": "아토피 피부염과 알레르기 피부염은 어떻게 다른가요?",
+        "query": "알레르기 피부염과 아토피 피부염 차이",
+        "stage": "질환 구분",
+        "officialDomainPresent": false,
+        "observedResult": "상급병원 질환 설명·교육 자료·비교형 글이 우선 노출",
+        "gap": "정의·부위·시간 경과·유발 요인·진단을 직접 비교하는 구조가 없음",
+        "action": "두 질환을 혼용하지 않는 의료진 검수 비교표와 FAQ 발행",
+        "referenceUrl": "https://www.withyouclinic.com/treat-well/allergy/"
+      }
+    ],
+    "siteSignals": [
+      {
+        "severity": "high",
+        "title": "식품 Total IgG 설명 정정 필요",
+        "detail": "음식 알레르기·불내증 진단 또는 안전·비안전 음식 구분에 쓰는 표현은 공신력 있는 권고와 충돌합니다."
+      },
+      {
+        "severity": "high",
+        "title": "경력·효과 표현 불일치",
+        "detail": "15년·18년·20년 표기와 92% 호전·국내 유일 등의 주장을 검증 가능한 한 값과 근거로 정리해야 합니다."
+      },
+      {
+        "severity": "medium",
+        "title": "중복 URL 신호 분산",
+        "detail": "동일 콘텐츠의 파라미터 URL이 검색 결과에 함께 나타나 canonical 및 내부 링크 정리가 필요합니다."
+      }
+    ]
+  },
+  "contentDraft": {
+    "id": "draft-atopy-testing-001",
+    "question": "아토피 검사에는 어떤 종류가 있고 언제 필요한가요?",
+    "status": "medical_review_required",
+    "preparedAt": "2026-09-10",
+    "h1": "아토피·알레르기 검사, 어떤 검사가 언제 필요할까요?",
+    "seoTitle": "아토피 알레르기 검사 종류｜IgE·MAST·피부단자·식품 IgG 차이",
+    "slug": "/guide/atopy-allergy-testing/",
+    "metaDescription": "아토피는 혈액검사 하나로 확진하지 않습니다. Total IgE, 특이 IgE, MAST, 피부단자검사가 필요한 경우와 식품 IgG 검사의 한계를 설명합니다.",
+    "directAnswer": "아토피피부염은 한 가지 혈액검사로 확진하지 않습니다. 증상과 피부 병변, 과거력·가족력, 진찰을 먼저 종합하고 특정 음식이나 환경 노출 뒤 증상이 반복될 때 필요한 검사만 선택합니다. 피부단자검사나 항원 특이 IgE 양성은 감작을 뜻할 뿐 실제 알레르기를 자동으로 확정하지 않으며, 식품 IgG 검사는 음식 알레르기나 불내증 진단용으로 권고되지 않습니다.",
+    "audience": "아토피 증상이 있는 성인, 영유아·소아 보호자, 음식·환경 알레르기를 의심하는 사람",
+    "intent": "검사 필요 여부 판단 → 검사 차이 이해 → 결과 해석 → 진료 전 준비",
+    "sections": [
+      {
+        "heading": "아토피는 검사 수치보다 증상과 진찰로 먼저 판단합니다",
+        "body": "아토피피부염은 임상 증상, 피부 병변의 모양과 분포, 과거력과 가족력, 진찰 및 필요한 검사 소견을 종합해 진단합니다. 알레르기 검사는 확진 버튼이 아니라 악화 요인을 확인하기 위한 보조 수단입니다."
+      },
+      {
+        "heading": "모든 환자에게 알레르기 검사가 필요한 것은 아닙니다",
+        "body": "특별한 알레르기 병력이 없는 경증 환자에게 무차별 검사가 우선되지는 않습니다. 특정 음식 직후 반응이 반복되거나, 적절한 치료에도 조절되지 않거나, 계절성 악화·비염·천식이 동반될 때 병력에 맞춰 검사를 고려합니다."
+      },
+      {
+        "heading": "증상과 상황에 따라 검사 선택이 달라집니다",
+        "body": "즉시형 알레르기가 의심되면 피부단자 또는 표적 특이 IgE, 접촉 제품에 의한 피부염이 의심되면 첩포검사를 고려할 수 있습니다. 식품알레르기가 불명확한 경우 음식물 유발시험은 응급대응이 가능한 전문 의료기관에서 시행합니다."
+      },
+      {
+        "heading": "양성 결과는 원인 확정과 같은 뜻이 아닙니다",
+        "body": "특이 IgE·MAST·ImmunoCAP 또는 피부단자검사 양성은 해당 항원에 감작됐을 가능성을 보여줍니다. 실제 노출 시 증상, 반복성, 시간 관계와 함께 해석해야 하며 결과만으로 음식을 끊어서는 안 됩니다."
+      },
+      {
+        "heading": "식품 IgG 결과로 음식을 제한하지 않습니다",
+        "body": "식품 IgG는 음식 노출에 따른 정상 면역반응이나 내성과 관련될 수 있어 음식 알레르기·불내증 진단에 권고되지 않습니다. 특히 소아의 광범위한 제한식은 영양과 성장에 영향을 줄 수 있으므로 의료진과 영양 전문가의 평가가 필요합니다."
+      },
+      {
+        "heading": "진료 전에 증상 기록을 준비하면 도움이 됩니다",
+        "body": "증상 사진, 시작 시점과 지속시간, 의심 음식·환경 노출, 반복 여부, 현재 복용약과 기존 검사결과를 준비하세요. 검사 전 약은 임의로 중단하지 말고 검사기관의 안내를 확인해야 합니다."
+      },
+      {
+        "heading": "호흡곤란·목 부종·실신은 외래 검사를 기다리지 않습니다",
+        "body": "음식이나 약물 노출 뒤 호흡곤란, 목·혀 부종, 실신 또는 빠르게 진행하는 전신 증상이 있으면 119와 응급진료를 우선합니다. 이 콘텐츠는 개인의 진단이나 응급 판단을 대신하지 않습니다."
+      }
+    ],
+    "testComparison": [
+      {
+        "test": "Total IgE",
+        "purpose": "전체적인 알레르기 경향을 참고하는 보조 지표",
+        "when": "병력·진찰과 함께 제한적으로 고려",
+        "limit": "원인 항원을 특정하거나 아토피를 단독 확진하지 못함",
+        "clinicStatus": "현재 운영·설명 의료진 확인"
+      },
+      {
+        "test": "특이 IgE·MAST·ImmunoCAP",
+        "purpose": "의심 항원에 대한 IgE 감작 확인",
+        "when": "즉시형 반응이 의심되고 표적 항원을 고를 수 있을 때",
+        "limit": "양성은 실제 임상 알레르기 확정이 아님",
+        "clinicStatus": "현재 검사 패널·적응증 의료진 확인"
+      },
+      {
+        "test": "피부단자검사",
+        "purpose": "즉시형 알레르기 감작을 빠르게 평가",
+        "when": "병력상 의심 항원이 있고 피부검사가 가능할 때",
+        "limit": "약물·피부 상태 영향을 받으며 결과를 병력과 해석해야 함",
+        "clinicStatus": "본원 시행 여부 확인"
+      },
+      {
+        "test": "첩포검사",
+        "purpose": "접촉 알레르기 원인을 평가",
+        "when": "화장품·외용제·금속 접촉 뒤 특정 부위 습진이 반복될 때",
+        "limit": "식품 즉시형 알레르기 확진검사가 아님",
+        "clinicStatus": "본원 시행 여부 확인"
+      },
+      {
+        "test": "음식물 유발시험",
+        "purpose": "식품알레르기 임상 반응 확인",
+        "when": "병력과 검사 결과만으로 판단이 불명확할 때",
+        "limit": "집에서 시행하지 않고 전문 의료기관의 감독·응급대응이 필요",
+        "clinicStatus": "본원 시행·의뢰 흐름 확인"
+      },
+      {
+        "test": "식품 IgG",
+        "purpose": "음식 노출에 따른 IgG 반응 측정",
+        "when": "음식 알레르기·불내증 진단용으로 권고되지 않음",
+        "limit": "양성만으로 안전·비안전 음식을 구분하거나 제한식을 정할 수 없음",
+        "clinicStatus": "기존 페이지 정정 전 콘텐츠 사용 차단"
+      }
+    ],
+    "faqs": [
+      {
+        "question": "아토피가 있으면 알레르기 검사를 모두 받아야 하나요?",
+        "answer": "아닙니다. 증상과 병력, 중증도, 기존 치료 반응에 따라 필요한 검사만 선택합니다."
+      },
+      {
+        "question": "Total IgE가 높으면 아토피가 심하다는 뜻인가요?",
+        "answer": "Total IgE는 보조 지표이며 단독으로 아토피의 유무나 중증도, 원인 항원을 확정하지 못합니다."
+      },
+      {
+        "question": "MAST에서 양성인 음식은 바로 끊어야 하나요?",
+        "answer": "양성은 감작을 뜻할 수 있으나 실제 반응과 같지 않습니다. 섭취 후 증상과 의료진 평가 없이 임의로 제한하지 마세요."
+      },
+      {
+        "question": "식품 IgG와 식품 특이 IgE는 어떻게 다른가요?",
+        "answer": "특이 IgE는 의심되는 즉시형 알레르기 평가에 보조적으로 사용하지만, 식품 IgG는 음식 알레르기·불내증 진단용으로 권고되지 않습니다."
+      },
+      {
+        "question": "알레르기 검사 전에 약을 끊어야 하나요?",
+        "answer": "검사 종류에 따라 약의 영향이 다릅니다. 임의로 중단하지 말고 예약 시 복용약을 알린 뒤 검사기관의 안내를 따르세요."
+      }
+    ],
+    "evidenceSources": [
+      {
+        "title": "질병관리청 국가건강정보포털 · 아토피피부염",
+        "url": "https://health.kdca.go.kr/healthinfo/biz/health/gnrlzHealthInfo/gnrlzHealthInfo/gnrlzHealthInfoView.do?cntnts_sn=6582",
+        "role": "국내 환자용 진단·검사 기준"
+      },
+      {
+        "title": "NICE · Atopic eczema recommendations",
+        "url": "https://www.nice.org.uk/guidance/cg57/chapter/Recommendations",
+        "role": "검사 고려 상황과 불필요한 검사"
+      },
+      {
+        "title": "American Academy of Dermatology · Allergy testing",
+        "url": "https://www.aad.org/public/diseases/eczema/childhood/treating/allergy-testing",
+        "role": "검사 대상·검사별 환자 안내"
+      },
+      {
+        "title": "AAAAI · The myth of IgG food panel testing",
+        "url": "https://www.aaaai.org/tools-for-the-public/conditions-library/allergies/igg-food-test",
+        "role": "식품 IgG 검사 비권고 근거"
+      },
+      {
+        "title": "질병관리청 국가건강정보포털 · 아나필락시스",
+        "url": "https://health.kdca.go.kr/healthinfo/biz/health/gnrlzHealthInfo/gnrlzHealthInfo/gnrlzHealthInfoView.do?cntnts_sn=6684",
+        "role": "응급 신호와 대처"
+      },
+      {
+        "title": "위드유 양·한방 통합검사",
+        "url": "https://www.withyouclinic.com/accurate-inspection/",
+        "role": "병원 기존 검사 안내와 정정 대상"
+      }
+    ],
+    "reviewChecklist": [
+      "위드유가 현재 실제 시행하는 검사와 외부 의뢰 검사를 구분",
+      "검사별 적응증·검체·준비사항·결과 소요시간을 의료진이 확인",
+      "식품 Total IgG를 음식 알레르기·불내증 진단 또는 제한식 근거로 쓰지 않기",
+      "Total IgE·ECP를 치료효과·예후·완치의 단독 지표로 표현하지 않기",
+      "피부단자·첩포·음식물 유발시험의 본원 시행 여부 확인",
+      "의료진 이름·검수일·수정일을 발행 페이지에 표시"
+    ],
+    "blockedPhrases": [
+      "식품 IgG로 안전한 음식과 안전하지 않은 음식을 구분",
+      "검사로 아토피 원인을 정확히 찾는다",
+      "Total IgE 감소가 완치 또는 호전을 증명한다",
+      "검사 후 근원치료·재발 방지",
+      "92% 호전",
+      "국내 유일"
+    ]
+  }
 }

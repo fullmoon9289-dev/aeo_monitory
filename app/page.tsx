@@ -56,6 +56,8 @@ type Fact = (typeof clinicData.facts)[number] & { status: FactStatus };
 
 const facts = clinicData.facts as Fact[];
 const opportunities = clinicData.opportunities;
+const publicBaseline = clinicData.publicWebBaseline;
+const contentDraft = clinicData.contentDraft;
 
 const statusMeta: Record<
   FactStatus,
@@ -115,7 +117,12 @@ const navItems: {
     badge: opportunities.length,
   },
   { id: 'studio', label: '콘텐츠 스튜디오', icon: FileText },
-  { id: 'monitor', label: 'AI 답변 모니터', icon: Bot },
+  {
+    id: 'monitor',
+    label: '노출 기준선',
+    icon: Bot,
+    badge: publicBaseline.summary.queries,
+  },
 ];
 
 declare global {
@@ -175,11 +182,18 @@ export default function Home() {
             throw new Error('질문은 두 글자 이상이어야 합니다.');
           openBrief(nextQuestion);
           return {
-            status: 'brief_ready',
+            status:
+              nextQuestion === contentDraft.question
+                ? 'medical_review_ready'
+                : 'brief_ready',
             hospital: clinicData.hospital.brandName,
             question: nextQuestion,
             medical_review: 'required',
             blocked_claims: counts.blocked_claim,
+            evidence_sources:
+              nextQuestion === contentDraft.question
+                ? contentDraft.evidenceSources.length
+                : 0,
           };
         },
       },
@@ -502,12 +516,24 @@ function CommandCenter({
       `${facts.length}개 레코드 생성`,
     ],
     [
+      '공개 웹 노출 기준선',
+      '완료',
+      true,
+      `${publicBaseline.summary.queries}개 질문 직접 확인`,
+    ],
+    [
+      '첫 근거형 콘텐츠 초안',
+      '완료',
+      true,
+      `공식·진료지침 근거 ${contentDraft.evidenceSources.length}개`,
+    ],
+    [
       '병원 담당자·의료진 검수',
       '진행 필요',
       false,
       `${reviewTotal}개 확인 대기`,
     ],
-    ['Search Console·AI 연결', '권한 필요', false, '실제 검색 및 답변 기준선'],
+    ['Search Console·AI 연결', '권한 필요', false, '검색 수요 및 AI 답변 실측'],
     ['콘텐츠 승인·CMS 발행', '대기', false, '의료진 승인 후 발행'],
   ] as const;
 
@@ -515,8 +541,8 @@ function CommandCenter({
     <>
       <Heading
         eyebrow={`위드유 온보딩 · ${clinicData.hospital.collectedAt}`}
-        title="공식 홈페이지를 안전한 AEO 지식베이스로 전환했습니다"
-        description="AI 노출 점수를 꾸며내지 않고 공개 정보를 출처별로 정리했습니다. 병원 확인과 외부 데이터 연결이 끝나면 실제 기준선 측정을 시작합니다."
+        title="공개 노출 기준선과 첫 근거형 콘텐츠까지 준비했습니다"
+        description="브랜드 검색에서는 공식 페이지가 확인됐지만 비브랜드 환자 질문 4개에서는 공식 도메인이 보이지 않았습니다. 검색량이나 AI 점수를 꾸미지 않고, 이 격차를 메울 첫 초안을 만들었습니다."
         action={
           <Button
             onClick={() => onNavigate('knowledge')}
@@ -531,7 +557,7 @@ function CommandCenter({
           label="수집한 지식"
           value={String(facts.length)}
           unit="개"
-          note="공식 페이지 11개 기준"
+          note="공식 페이지 + 외부 검증 근거"
           icon={Database}
           tone="bg-[#efecff] text-[#6653df]"
         />
@@ -567,11 +593,11 @@ function CommandCenter({
             <div>
               <h2 className="text-[15px] font-bold">실서비스 시작 단계</h2>
               <p className="mt-1 text-xs text-[#9692a0]">
-                담당자 확인을 기다리는 단계입니다.
+                이제 병원·의료진 검수가 필요합니다.
               </p>
             </div>
             <span className="rounded-full bg-[#f0edff] px-2.5 py-1 text-[10px] font-bold text-[#5d49d2]">
-              2 / 5 완료
+              4 / 7 완료
             </span>
           </div>
           <div className="space-y-2">
@@ -686,17 +712,17 @@ function CommandCenter({
           <div className="flex items-center justify-between">
             <div>
               <div className="text-[10px] font-semibold tracking-[.1em] text-[#aaa3bd]">
-                FIRST CONTENT BRIEF
+                FIRST EVIDENCE DRAFT
               </div>
               <h2 className="mt-1 text-[17px] font-bold">
-                검사 질문부터 시작하세요
+                검사 가이드 초안 준비됨
               </h2>
             </div>
             <Sparkles className="size-5 text-[#a99bff]" />
           </div>
           <p className="mt-4 text-xs leading-5 text-white/65">
-            공개 근거가 가장 많이 준비되어 있어 과장 없이 유용한 답변으로
-            전환하기 좋습니다.
+            검사 선택 기준과 결과 해석 한계를 먼저 답합니다. 식품 IgG 등 기존
+            페이지의 위험 표현은 검수 차단했습니다.
           </p>
           <button
             onClick={() => onBrief(opportunities[0].question)}
@@ -960,190 +986,322 @@ function OpportunitiesView({
 }
 
 function StudioView({ question, ready }: { question: string; ready: boolean }) {
-  const [stage, setStage] = useState(ready ? 1 : 0);
-  const sections = [
-    ['한 문장 요약', '진단이나 효과를 단정하지 않고 질문의 범위부터 설명'],
-    ['상담이 필요한 시점', '공개 의료 근거를 추가하고 의료진이 표현 검수'],
-    ['검사·진료 과정', '현재 운영이 확인된 위드유 공식 정보만 연결'],
-    ['위드유에서 확인할 항목', '예약제·의료진·검사 등 출처가 있는 사실'],
-    ['개인차·주의사항', '온라인 정보가 개별 진단을 대신하지 않는다는 안내'],
-    ['출처와 검수자', '근거 URL·확인일·의료진 승인자 표시'],
-  ];
+  const isPrimaryDraft = question === contentDraft.question;
+  const [panel, setPanel] = useState<'draft' | 'comparison' | 'evidence'>(
+    'draft',
+  );
+  const activeStage = isPrimaryDraft ? 2 : ready ? 1 : 0;
+
   return (
     <>
       <Heading
         eyebrow="Medical Content Studio"
-        title="공식 근거와 금지 표현을 함께 묶은 브리프입니다"
-        description="아직 AI 생성 및 CMS 발행 연결 전입니다. 지금은 의료진이 검토할 질문·근거·위험 규칙을 먼저 확정합니다."
+        title="첫 콘텐츠를 의료진 검수 가능한 초안으로 만들었습니다"
+        description="질병관리청과 전문학회 근거를 병원 정보와 분리해 연결했습니다. 기존 검사 페이지와 충돌하는 표현은 발행 전에 먼저 정정해야 합니다."
         action={
           <Badge
             variant="outline"
-            className="h-8 gap-1.5 border-[#e0dafb] bg-[#f7f5ff] text-[#5d49d2]"
+            className="h-8 gap-1.5 border-[#ead7bd] bg-[#fff8ed] text-[#a76524]"
           >
-            <ShieldCheck className="size-3.5" /> 의료진 승인 필수
+            <Clock3 className="size-3.5" /> 의료진 검수 대기
           </Badge>
         }
       />
       <div className="mb-5 grid gap-2 sm:grid-cols-4">
-        {['질문·근거 선택', '의료 브리프', '의료진 검수', 'CMS 발행'].map(
+        {['질문·근거 선택', '근거형 초안', '의료진 검수', 'CMS 발행'].map(
           (item, index) => (
             <div
               key={item}
-              className={`rounded-xl border p-3 ${index <= stage ? 'border-[#d8d1ff] bg-[#f6f4ff]' : 'border-[#e8e6ee] bg-white'}`}
+              className={`rounded-xl border p-3 ${index <= activeStage ? 'border-[#d8d1ff] bg-[#f6f4ff]' : 'border-[#e8e6ee] bg-white'}`}
             >
               <div
-                className={`mb-2 grid size-6 place-items-center rounded-full text-[10px] font-bold ${index < stage ? 'bg-[#6957e8] text-white' : index === stage ? 'bg-[#e2ddff] text-[#5946d4]' : 'bg-[#f0eef3] text-[#9b97a4]'}`}
+                className={`mb-2 grid size-6 place-items-center rounded-full text-[10px] font-bold ${index < activeStage ? 'bg-[#6957e8] text-white' : index === activeStage ? 'bg-[#e2ddff] text-[#5946d4]' : 'bg-[#f0eef3] text-[#9b97a4]'}`}
               >
-                {index < stage ? <Check className="size-3" /> : index + 1}
+                {index < activeStage ? <Check className="size-3" /> : index + 1}
               </div>
               <div className="text-xs font-semibold">{item}</div>
             </div>
           ),
         )}
       </div>
-      <div className="grid gap-5 xl:grid-cols-[1.35fr_.85fr]">
-        <div className="rounded-2xl border border-[#e8e6ee] bg-white">
+
+      <div className="grid gap-5 xl:grid-cols-[1.45fr_.75fr]">
+        <div className="overflow-hidden rounded-2xl border border-[#e8e6ee] bg-white">
           <div className="border-b border-[#efedf3] p-5 sm:p-6">
-            <div className="text-[10px] font-semibold text-[#8f8b99]">
-              TARGET PATIENT QUESTION
+            <div className="text-[10px] font-semibold tracking-[.08em] text-[#8f8b99]">
+              {isPrimaryDraft ? 'EVIDENCE DRAFT 01' : 'TARGET PATIENT QUESTION'}
             </div>
-            <h2 className="mt-2 text-lg font-bold leading-7 tracking-tight">
-              {question}
+            <h2 className="mt-2 text-xl font-bold leading-8 tracking-tight">
+              {isPrimaryDraft ? contentDraft.h1 : question}
             </h2>
             <div className="mt-3 flex flex-wrap gap-2">
               <Badge variant="secondary">위드유 의원·한의원</Badge>
-              <Badge variant="outline">공식 출처 11개</Badge>
-              <Badge className="bg-[#fff4e7] text-[#b76a20]">
-                수요 측정 전
+              <Badge variant="outline">
+                근거 {isPrimaryDraft ? contentDraft.evidenceSources.length : 0}
+                개
+              </Badge>
+              <Badge className="bg-[#fff1e6] text-[#b76a20]">
+                의료진 승인 전 발행 금지
               </Badge>
             </div>
           </div>
-          <div className="p-5 sm:p-6">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-sm font-bold">권장 답변 구조</h3>
-              <span className="text-[10px] text-[#9995a2]">환자 언어 기준</span>
-            </div>
-            <div className="space-y-3">
-              {sections.map(([title, detail], index) => (
-                <div
-                  key={title}
-                  className="flex items-start gap-3 rounded-xl border border-[#eceaf0] p-3.5"
-                >
-                  <span className="grid size-6 shrink-0 place-items-center rounded-lg bg-[#f0edff] text-[10px] font-bold text-[#5e4bd3]">
-                    {index + 1}
-                  </span>
+
+          {isPrimaryDraft ? (
+            <>
+              <div className="flex gap-2 overflow-x-auto border-b border-[#efedf3] px-5 py-3 sm:px-6">
+                {[
+                  ['draft', '초안 본문'],
+                  ['comparison', '검사 선택표'],
+                  ['evidence', '근거·검수'],
+                ].map(([id, label]) => (
+                  <button
+                    key={id}
+                    onClick={() =>
+                      setPanel(id as 'draft' | 'comparison' | 'evidence')
+                    }
+                    className={`whitespace-nowrap rounded-lg px-3 py-2 text-xs font-semibold ${panel === id ? 'bg-[#eeeaff] text-[#5946d4]' : 'text-[#817d8a] hover:bg-[#f7f6fa]'}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <div className="p-5 sm:p-6">
+                {panel === 'draft' ? (
                   <div>
-                    <div className="text-xs font-semibold">{title}</div>
-                    <div className="mt-1 text-[11px] leading-5 text-[#9692a0]">
-                      {detail}
+                    <div className="rounded-2xl border border-[#dcd5ff] bg-[#f7f5ff] p-5">
+                      <div className="flex items-center gap-2 text-[#5d49d2]">
+                        <MessageCircleQuestion className="size-4" />
+                        <span className="text-[10px] font-bold tracking-[.08em]">
+                          상단 직접 답변
+                        </span>
+                      </div>
+                      <p className="mt-3 text-sm font-medium leading-7 text-[#474253]">
+                        {contentDraft.directAnswer}
+                      </p>
+                    </div>
+                    <div className="mt-5 space-y-3">
+                      {contentDraft.sections.map((section, index) => (
+                        <article
+                          key={section.heading}
+                          className="rounded-xl border border-[#eceaf0] p-4"
+                        >
+                          <div className="flex items-start gap-3">
+                            <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-[#f0edff] text-[10px] font-bold text-[#5e4bd3]">
+                              {index + 1}
+                            </span>
+                            <div>
+                              <h3 className="text-sm font-bold leading-6">
+                                {section.heading}
+                              </h3>
+                              <p className="mt-1.5 text-xs leading-6 text-[#777381]">
+                                {section.body}
+                              </p>
+                            </div>
+                          </div>
+                        </article>
+                      ))}
                     </div>
                   </div>
-                </div>
-              ))}
-            </div>
-            <div className="mt-5 flex flex-col justify-end gap-2 sm:flex-row">
-              <Button variant="outline">근거 11개 보기</Button>
-              <Button
-                onClick={() => setStage(2)}
-                className="bg-[#6957e8] hover:bg-[#5845d5]"
-              >
-                검수 화면 미리보기 <ArrowRight className="size-4" />
-              </Button>
-            </div>
-            {stage >= 2 ? (
-              <div className="mt-4 flex items-start gap-2 rounded-xl border border-[#cfeadf] bg-[#f4fbf7] p-3 text-xs leading-5 text-[#247c5e]">
-                <CheckCircle2 className="mt-0.5 size-4 shrink-0" />
-                브리프가 의료진 검수 단계로 준비되었습니다. 실제 저장과 담당자
-                배정은 데이터베이스 연결 후 활성화됩니다.
+                ) : null}
+
+                {panel === 'comparison' ? (
+                  <div>
+                    <div className="mb-4">
+                      <h3 className="text-sm font-bold">검사 의미와 한계</h3>
+                      <p className="mt-1 text-xs leading-5 text-[#8f8b98]">
+                        많이 검사하는 것이 아니라 병력상 필요한 검사를 고르는
+                        구조입니다.
+                      </p>
+                    </div>
+                    <div className="overflow-x-auto rounded-xl border border-[#eceaf0]">
+                      <table className="w-full min-w-[780px] text-left text-[11px]">
+                        <thead className="bg-[#faf9fc] text-[9px] uppercase tracking-[.05em] text-[#9793a0]">
+                          <tr>
+                            <th className="px-4 py-3">검사</th>
+                            <th className="px-3 py-3">무엇을 보나</th>
+                            <th className="px-3 py-3">언제 고려하나</th>
+                            <th className="px-3 py-3">한계</th>
+                            <th className="px-4 py-3">위드유 상태</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-[#f0eef4]">
+                          {contentDraft.testComparison.map((row) => (
+                            <tr key={row.test} className="align-top">
+                              <td className="px-4 py-4 font-bold">
+                                {row.test}
+                              </td>
+                              <td className="max-w-[180px] px-3 py-4 leading-5 text-[#686472]">
+                                {row.purpose}
+                              </td>
+                              <td className="max-w-[210px] px-3 py-4 leading-5 text-[#686472]">
+                                {row.when}
+                              </td>
+                              <td className="max-w-[220px] px-3 py-4 leading-5 text-[#8b5b57]">
+                                {row.limit}
+                              </td>
+                              <td className="px-4 py-4 text-[10px] font-semibold text-[#a76625]">
+                                {row.clinicStatus}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ) : null}
+
+                {panel === 'evidence' ? (
+                  <div className="grid gap-6 lg:grid-cols-2">
+                    <div>
+                      <h3 className="text-sm font-bold">공식·전문 근거</h3>
+                      <div className="mt-3 space-y-2">
+                        {contentDraft.evidenceSources.map((source) => (
+                          <a
+                            key={source.url}
+                            href={source.url}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="flex items-start gap-3 rounded-xl border border-[#eceaf0] p-3.5 hover:border-[#d8d1ff]"
+                          >
+                            <ExternalLink className="mt-0.5 size-3.5 shrink-0 text-[#6957e8]" />
+                            <span>
+                              <span className="block text-xs font-semibold leading-5">
+                                {source.title}
+                              </span>
+                              <span className="mt-1 block text-[10px] leading-4 text-[#9692a0]">
+                                {source.role}
+                              </span>
+                            </span>
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-bold">의료진 확인 항목</h3>
+                      <div className="mt-3 space-y-2">
+                        {contentDraft.reviewChecklist.map((item, index) => (
+                          <div
+                            key={item}
+                            className="flex items-start gap-3 rounded-xl bg-[#faf9fc] p-3.5"
+                          >
+                            <span className="grid size-5 shrink-0 place-items-center rounded-full bg-[#fff0e4] text-[9px] font-bold text-[#b76a20]">
+                              {index + 1}
+                            </span>
+                            <p className="text-[11px] leading-5 text-[#686472]">
+                              {item}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                ) : null}
               </div>
-            ) : null}
-          </div>
+            </>
+          ) : (
+            <div className="p-5 sm:p-6">
+              <div className="rounded-xl border border-[#eadfcf] bg-[#fffaf2] p-5 text-xs leading-6 text-[#7b6d59]">
+                이 질문의 지식베이스 연결은 준비됐지만 외부 의료 근거를 붙인
+                전체 초안은 아직 없습니다. 첫 초안 검수가 끝난 뒤 같은 방식으로
+                확장합니다.
+              </div>
+            </div>
+          )}
         </div>
+
         <div className="space-y-5">
           <div className="rounded-2xl border border-[#e8e6ee] bg-white p-5">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-sm font-bold">사용 가능한 근거</h3>
-              <span className="text-lg font-bold text-[#258967]">
-                {counts.source_confirmed}
-              </span>
+            <div className="flex items-center justify-between gap-3">
+              <h3 className="text-sm font-bold">검색 결과용 설계</h3>
+              <Badge className="bg-[#e8f7f1] text-[#218462]">작성 완료</Badge>
             </div>
-            <div className="space-y-3">
-              {[
-                ['병원명·주소·연락처', true],
-                ['예약제·월요일 야간진료', true],
-                ['진료 분야 페이지', true],
-                ['검사별 현재 운영 여부', false],
-                ['의료진 자격 증빙', false],
-              ].map(([label, ok]) => (
-                <div
-                  key={String(label)}
-                  className="flex items-center gap-2 text-xs"
-                >
-                  <span
-                    className={`grid size-5 place-items-center rounded-full ${ok ? 'bg-[#e8f7f1] text-[#218462]' : 'bg-[#fff1e7] text-[#d77832]'}`}
-                  >
-                    {ok ? (
-                      <Check className="size-3" />
-                    ) : (
-                      <TriangleAlert className="size-3" />
-                    )}
-                  </span>
-                  <span className="flex-1">{String(label)}</span>
-                  <span
-                    className={`text-[10px] font-semibold ${ok ? 'text-[#258967]' : 'text-[#d77832]'}`}
-                  >
-                    {ok ? '사용 가능' : '확인 필요'}
-                  </span>
+            <div className="mt-4 space-y-4 text-xs">
+              <div>
+                <div className="text-[10px] font-semibold text-[#9a96a3]">
+                  SEO TITLE
                 </div>
-              ))}
+                <p className="mt-1.5 font-semibold leading-5">
+                  {contentDraft.seoTitle}
+                </p>
+              </div>
+              <div>
+                <div className="text-[10px] font-semibold text-[#9a96a3]">
+                  RECOMMENDED URL
+                </div>
+                <p className="mt-1.5 break-all font-mono text-[10px] text-[#6957e8]">
+                  {contentDraft.slug}
+                </p>
+              </div>
+              <div>
+                <div className="text-[10px] font-semibold text-[#9a96a3]">
+                  META DESCRIPTION
+                </div>
+                <p className="mt-1.5 leading-5 text-[#777381]">
+                  {contentDraft.metaDescription}
+                </p>
+              </div>
             </div>
           </div>
+
           <div className="rounded-2xl border border-[#f1d6df] bg-[#fffafb] p-5">
             <div className="flex items-center gap-2 text-[#bd476e]">
               <LockKeyhole className="size-4" />
-              <h3 className="text-sm font-bold">자동 차단 문구</h3>
+              <h3 className="text-sm font-bold">이번 초안 차단 표현</h3>
             </div>
-            <div className="mt-4 flex flex-wrap gap-2">
-              {[
-                '92% 호전',
-                '면역세포 증가',
-                '국내 유일',
-                '완치',
-                '근원치료',
-                '재발 방지',
-              ].map((claim) => (
-                <span
+            <div className="mt-4 space-y-2">
+              {contentDraft.blockedPhrases.map((claim) => (
+                <div
                   key={claim}
-                  className="rounded-lg border border-[#f0d5d8] bg-white px-2.5 py-1.5 text-[10px] font-semibold text-[#b84c57]"
+                  className="flex items-start gap-2 rounded-lg border border-[#f0d5d8] bg-white px-3 py-2.5 text-[10px] font-semibold leading-4 text-[#a84b54]"
                 >
-                  {claim}
-                </span>
+                  <X className="mt-0.5 size-3 shrink-0" /> {claim}
+                </div>
               ))}
             </div>
-            <p className="mt-3 text-[10px] leading-4 text-[#9a777d]">
-              원자료와 의료·광고 검토가 끝나기 전에는 초안에도 넣지 않습니다.
-            </p>
           </div>
+
+          <div className="rounded-2xl border border-[#ead7bd] bg-[#fffaf2] p-5">
+            <div className="flex items-center gap-2 text-[#a76524]">
+              <TriangleAlert className="size-4" />
+              <h3 className="text-sm font-bold">기존 페이지 정정이 먼저</h3>
+            </div>
+            <p className="mt-3 text-xs leading-5 text-[#7b6d59]">
+              {publicBaseline.siteSignals[0].detail}
+            </p>
+            <a
+              href="https://www.withyouclinic.com/accurate-inspection/"
+              target="_blank"
+              rel="noreferrer"
+              className="mt-3 inline-flex items-center gap-1 text-[10px] font-bold text-[#9a5d20] hover:underline"
+            >
+              현재 검사 페이지 확인 <ExternalLink className="size-3" />
+            </a>
+          </div>
+
           <div className="rounded-2xl border border-[#e8e6ee] bg-white p-5">
-            <h3 className="text-sm font-bold">발행 연결 상태</h3>
+            <h3 className="text-sm font-bold">발행 상태</h3>
             <div className="mt-4 space-y-2">
               {[
-                ['AI 초안 생성', 'API 키 필요'],
-                ['의료진 승인 저장', 'DB 연결 필요'],
-                ['WordPress 초안 발행', '권한 필요'],
-              ].map(([label, status]) => (
+                ['근거형 초안', '완료', true],
+                ['의료진 승인', '대기', false],
+                ['WordPress 초안 전송', '권한 필요', false],
+              ].map(([label, status, done]) => (
                 <div
-                  key={label}
+                  key={String(label)}
                   className="flex items-center gap-3 rounded-xl border border-[#eceaf0] p-3 text-xs"
                 >
-                  <span className="size-2 rounded-full bg-[#e59b42]" />
-                  <span className="flex-1 font-semibold">{label}</span>
-                  <span className="text-[10px] text-[#9a96a3]">{status}</span>
+                  <span
+                    className={`size-2 rounded-full ${done ? 'bg-[#2cad77]' : 'bg-[#e59b42]'}`}
+                  />
+                  <span className="flex-1 font-semibold">{String(label)}</span>
+                  <span className="text-[10px] text-[#9a96a3]">
+                    {String(status)}
+                  </span>
                 </div>
               ))}
             </div>
             <Button disabled className="mt-4 w-full">
-              <LockKeyhole className="size-4" /> 승인·연결 후 발행
+              <LockKeyhole className="size-4" /> 검수·연결 후 발행
             </Button>
           </div>
         </div>
@@ -1154,114 +1312,221 @@ function StudioView({ question, ready }: { question: string; ready: boolean }) {
 
 function MonitorView({ onNavigate }: { onNavigate: (view: View) => void }) {
   const [query, setQuery] = useState('');
-  const rows = clinicData.monitorQuestions.filter((item) =>
-    item.question.toLowerCase().includes(query.toLowerCase()),
+  const [mode, setMode] = useState<'public' | 'ai'>('public');
+  const normalized = query.trim().toLowerCase();
+  const publicRows = publicBaseline.rows.filter((item) =>
+    [item.question, item.query, item.stage, item.gap, item.action]
+      .join(' ')
+      .toLowerCase()
+      .includes(normalized),
+  );
+  const aiRows = clinicData.monitorQuestions.filter((item) =>
+    item.question.toLowerCase().includes(normalized),
   );
   return (
     <>
       <Heading
-        eyebrow="Answer-level Monitoring"
-        title="기준선 질문은 준비됐고, 실제 AI 측정 연결을 기다립니다"
-        description="API 연결 전에는 언급률과 인용률을 표시하지 않습니다. 연결 후 공급자·모델·실행시각·원문·출처까지 저장합니다."
+        eyebrow="Public Web Baseline"
+        title="브랜드 검색은 보이지만 비브랜드 질문 4개는 공식 페이지가 비어 있습니다"
+        description="2026-09-10 공개 웹 검색 결과군을 직접 확인한 진단입니다. 개인화 검색·지도팩·검색량·실제 AI 답변 순위가 아니며, AI API 연결 전의 탐색용 기준선입니다."
         action={
           <Button onClick={() => onNavigate('settings')} variant="outline">
-            <Link2 className="size-4" /> AI 연결 보기
+            <Link2 className="size-4" /> 실측 연결 보기
           </Button>
         }
       />
       <div className="mb-5 grid gap-4 sm:grid-cols-3">
         <Metric
-          label="기준선 질문"
-          value={String(clinicData.monitorQuestions.length)}
+          label="공개 검색 확인"
+          value={String(publicBaseline.summary.queries)}
           unit="개"
-          note="위드유 진료영역 기준"
+          note="같은 시점·공개 결과군"
           icon={MessageCircleQuestion}
           tone="bg-[#efecff] text-[#6653df]"
         />
         <Metric
-          label="측정 완료"
-          value="0"
+          label="공식 도메인 확인"
+          value={String(publicBaseline.summary.officialDomainPresent)}
           unit="개"
-          note="AI API 연결 후 시작"
-          icon={Target}
-          tone="bg-[#fff1e6] text-[#d77832]"
+          note="브랜드명 포함 질문"
+          icon={Globe2}
+          tone="bg-[#e8f7f1] text-[#218462]"
         />
         <Metric
-          label="예정 공급자"
-          value="3"
+          label="비브랜드 노출 공백"
+          value={String(publicBaseline.summary.nonBrandGaps)}
           unit="개"
-          note="OpenAI부터 순차 연결"
-          icon={Bot}
-          tone="bg-[#e8f7f1] text-[#218462]"
+          note="콘텐츠로 메울 우선 영역"
+          icon={Target}
+          tone="bg-[#fff1e6] text-[#d77832]"
         />
       </div>
       <div className="overflow-hidden rounded-2xl border border-[#e8e6ee] bg-white">
         <div className="flex flex-col gap-3 border-b border-[#efedf3] p-4 sm:flex-row sm:items-center">
+          <div className="flex shrink-0 rounded-lg bg-[#f3f1f6] p-1">
+            {[
+              ['public', '공개 웹 기준선'],
+              ['ai', 'AI 질문 대기열'],
+            ].map(([id, label]) => (
+              <button
+                key={id}
+                onClick={() => setMode(id as 'public' | 'ai')}
+                className={`rounded-md px-3 py-2 text-[10px] font-bold ${mode === id ? 'bg-white text-[#5d49d2] shadow-sm' : 'text-[#8f8b98]'}`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-[#aaa6b1]" />
             <input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
               aria-label="질문 검색"
-              placeholder="환자 질문 검색"
+              placeholder="질문·격차·실행안 검색"
               className="h-9 w-full rounded-lg border border-[#dfdde6] bg-[#fbfafc] pl-9 pr-3 text-xs outline-none focus:border-[#8170e9]"
             />
           </div>
           <Badge
             variant="outline"
-            className="h-8 justify-center gap-1.5 text-[#a56a2c]"
+            className={`h-8 justify-center gap-1.5 ${mode === 'public' ? 'text-[#258967]' : 'text-[#a56a2c]'}`}
           >
-            <Clock3 className="size-3.5" /> 기준선 대기
+            {mode === 'public' ? (
+              <CheckCircle2 className="size-3.5" />
+            ) : (
+              <Clock3 className="size-3.5" />
+            )}
+            {mode === 'public' ? '진단 완료' : 'API 연결 대기'}
           </Badge>
         </div>
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[850px] text-left text-xs">
-            <thead className="bg-[#fbfafe] text-[10px] uppercase tracking-[.05em] text-[#9995a2]">
-              <tr>
-                <th className="px-6 py-3">환자 질문</th>
-                <th className="px-3 py-3">여정</th>
-                <th className="px-3 py-3">예정 엔진</th>
-                <th className="px-3 py-3">브랜드 언급</th>
-                <th className="px-3 py-3">공식 페이지 인용</th>
-                <th className="px-6 py-3">상태</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-[#f0eef4]">
-              {rows.map((item) => (
-                <tr key={item.question} className="hover:bg-[#fcfbff]">
-                  <td className="max-w-[340px] px-6 py-4 font-semibold leading-5">
-                    {item.question}
-                  </td>
-                  <td className="px-3 py-4">
-                    <Badge variant="secondary">{item.stage}</Badge>
-                  </td>
-                  <td className="px-3 py-4">
-                    <div className="flex flex-wrap gap-1.5">
-                      {item.providers.map((provider) => (
-                        <span
-                          key={provider}
-                          className="rounded-md bg-[#eeeaf9] px-2 py-1 text-[9px] font-bold text-[#5b48d2]"
-                        >
-                          {provider}
-                        </span>
-                      ))}
-                    </div>
-                  </td>
-                  <td className="px-3 py-4 text-[#aaa6b1]">—</td>
-                  <td className="px-3 py-4 text-[#aaa6b1]">—</td>
-                  <td className="px-6 py-4 font-semibold text-[#b2702d]">
-                    {item.status}
-                  </td>
+        {mode === 'public' ? (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[1120px] text-left text-xs">
+              <thead className="bg-[#fbfafe] text-[9px] uppercase tracking-[.05em] text-[#9995a2]">
+                <tr>
+                  <th className="px-6 py-3">실행 검색어</th>
+                  <th className="px-3 py-3">여정</th>
+                  <th className="px-3 py-3">공식 도메인</th>
+                  <th className="px-3 py-3">관찰 결과</th>
+                  <th className="px-3 py-3">콘텐츠 격차</th>
+                  <th className="px-6 py-3">추천 조치</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody className="divide-y divide-[#f0eef4]">
+                {publicRows.map((item) => (
+                  <tr key={item.query} className="align-top hover:bg-[#fcfbff]">
+                    <td className="max-w-[220px] px-6 py-4">
+                      <div className="font-semibold leading-5">
+                        {item.query}
+                      </div>
+                      <a
+                        href={item.referenceUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-2 inline-flex items-center gap-1 text-[9px] font-bold text-[#6957e8] hover:underline"
+                      >
+                        관련 공식 페이지 <ExternalLink className="size-3" />
+                      </a>
+                    </td>
+                    <td className="px-3 py-4">
+                      <Badge variant="secondary">{item.stage}</Badge>
+                    </td>
+                    <td className="px-3 py-4">
+                      <span
+                        className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[9px] font-bold ${item.officialDomainPresent ? 'bg-[#e8f7f1] text-[#218462]' : 'bg-[#fff0e7] text-[#bd6729]'}`}
+                      >
+                        {item.officialDomainPresent ? (
+                          <Check className="size-3" />
+                        ) : (
+                          <X className="size-3" />
+                        )}
+                        {item.officialDomainPresent ? '확인' : '미확인'}
+                      </span>
+                    </td>
+                    <td className="max-w-[230px] px-3 py-4 text-[10px] leading-5 text-[#777381]">
+                      {item.observedResult}
+                    </td>
+                    <td className="max-w-[250px] px-3 py-4 text-[10px] leading-5 text-[#8b5b57]">
+                      {item.gap}
+                    </td>
+                    <td className="max-w-[270px] px-6 py-4 text-[10px] font-medium leading-5 text-[#5d5279]">
+                      {item.action}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[850px] text-left text-xs">
+              <thead className="bg-[#fbfafe] text-[10px] uppercase tracking-[.05em] text-[#9995a2]">
+                <tr>
+                  <th className="px-6 py-3">환자 질문</th>
+                  <th className="px-3 py-3">여정</th>
+                  <th className="px-3 py-3">예정 엔진</th>
+                  <th className="px-3 py-3">브랜드 언급</th>
+                  <th className="px-3 py-3">공식 페이지 인용</th>
+                  <th className="px-6 py-3">상태</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#f0eef4]">
+                {aiRows.map((item) => (
+                  <tr key={item.question} className="hover:bg-[#fcfbff]">
+                    <td className="max-w-[340px] px-6 py-4 font-semibold leading-5">
+                      {item.question}
+                    </td>
+                    <td className="px-3 py-4">
+                      <Badge variant="secondary">{item.stage}</Badge>
+                    </td>
+                    <td className="px-3 py-4">
+                      <div className="flex flex-wrap gap-1.5">
+                        {item.providers.map((provider) => (
+                          <span
+                            key={provider}
+                            className="rounded-md bg-[#eeeaf9] px-2 py-1 text-[9px] font-bold text-[#5b48d2]"
+                          >
+                            {provider}
+                          </span>
+                        ))}
+                      </div>
+                    </td>
+                    <td className="px-3 py-4 text-[#aaa6b1]">—</td>
+                    <td className="px-3 py-4 text-[#aaa6b1]">—</td>
+                    <td className="px-6 py-4 font-semibold text-[#b2702d]">
+                      {item.status}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
+      {mode === 'public' ? (
+        <div className="mt-5 grid gap-3 md:grid-cols-3">
+          {publicBaseline.siteSignals.map((signal) => (
+            <div
+              key={signal.title}
+              className={`rounded-xl border p-4 ${signal.severity === 'high' ? 'border-[#f1d6df] bg-[#fffafb]' : 'border-[#eadfcf] bg-[#fffaf2]'}`}
+            >
+              <div className="flex items-center gap-2">
+                <TriangleAlert
+                  className={`size-4 ${signal.severity === 'high' ? 'text-[#bd476e]' : 'text-[#a76524]'}`}
+                />
+                <h3 className="text-xs font-bold">{signal.title}</h3>
+              </div>
+              <p className="mt-2 text-[10px] leading-5 text-[#777381]">
+                {signal.detail}
+              </p>
+            </div>
+          ))}
+        </div>
+      ) : null}
       <InfoNote>
-        API 측정은 소비자가 보는 ChatGPT·Google AI 웹 화면과 완전히 같지 않을 수
-        있습니다. 공급자·모델·시간 조건을 저장한 “API 기반 대리 측정”으로
-        표시합니다.
+        {mode === 'public'
+          ? publicBaseline.disclaimer
+          : 'API 측정은 소비자가 보는 ChatGPT·Google AI 웹 화면과 완전히 같지 않을 수 있습니다. 공급자·모델·시간 조건을 저장한 “API 기반 대리 측정”으로 표시합니다.'}
       </InfoNote>
     </>
   );
@@ -1296,8 +1561,8 @@ function KnowledgeView() {
     <>
       <Heading
         eyebrow="Hospital Knowledge Base"
-        title="위드유 공식 정보를 출처와 검수 상태별로 저장했습니다"
-        description="‘공식 출처 확인’은 병원 홈페이지 게시 사실을 확인했다는 뜻이며, 치료 효과가 독립적으로 검증되었다는 의미는 아닙니다."
+        title="위드유 공식 정보와 외부 검증 근거를 상태별로 저장했습니다"
+        description="‘공식 출처 확인’은 병원 홈페이지 게시 사실을 확인했다는 뜻입니다. 외부 지침과 충돌하는 검사항목·효과 주장은 별도로 차단했습니다."
         action={
           <a
             href={clinicData.hospital.website}
