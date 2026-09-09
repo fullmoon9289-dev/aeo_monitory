@@ -1,1 +1,5 @@
-þë+ý¸§ý¶¬{®%ŠwµßŸÝzÿìµÚ.´ê^­«b¢yè¶—«š+my
+import type { NextConfig } from 'next';
+
+const nextConfig: NextConfig = {};
+
+export default nextConfig;

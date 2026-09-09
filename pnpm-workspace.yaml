@@ -1,1 +1,4 @@
-þë+ý¸§ý¶¬{®%ŠwµßŸÝzÿìµÚ.´ê^­«b¢yè¶—«š+my
+allowBuilds:
+  esbuild: true
+  sharp: true
+  workerd: true

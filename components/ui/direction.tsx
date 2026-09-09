@@ -1,1 +1,6 @@
-þë+ý¸§ý¶¬{®%ŠwµßŸÝzÿìµÚ.´ê^­«b¢yè¶—«š+my
+'use client';
+
+export {
+  DirectionProvider,
+  useDirection,
+} from '@base-ui/react/direction-provider';
