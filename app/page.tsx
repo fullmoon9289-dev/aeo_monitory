@@ -16,6 +16,7 @@ import {
   Database,
   ExternalLink,
   FileCheck2,
+  FileDown,
   FileText,
   Globe2,
   Hospital,
@@ -58,6 +59,7 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from '@/components/ui/chart';
+import { DiagnosticReport } from '@/components/diagnostic-report';
 import clinicData from '@/data/withyou-clinic.json';
 
 type View =
@@ -67,6 +69,7 @@ type View =
   | 'opportunities'
   | 'studio'
   | 'monitor'
+  | 'report'
   | 'knowledge'
   | 'settings';
 type FactStatus =
@@ -147,6 +150,7 @@ const navItems: {
     icon: Bot,
     badge: publicBaseline.summary.queries,
   },
+  { id: 'report', label: 'PDF 진단 보고서', icon: FileDown },
 ];
 
 declare global {
@@ -257,6 +261,9 @@ export default function Home() {
             <StudioView question={question} ready={briefReady} />
           )}
           {active === 'monitor' && <MonitorView onNavigate={setActive} />}
+          {active === 'report' && (
+            <DiagnosticReport onBack={() => setActive('performance')} />
+          )}
           {active === 'knowledge' && <KnowledgeView />}
           {active === 'settings' && <SettingsView />}
         </main>
@@ -1424,9 +1431,17 @@ function PerformanceView({ onNavigate }: { onNavigate: (view: View) => void }) {
         title="콘텐츠 발행 전·후, AI 노출이 얼마나 달라졌는지 보여줍니다"
         description="같은 환자 질문과 AI 조건을 반복 측정해 브랜드 언급, 공식 홈페이지 인용, 실제 추천 방문을 각각 확인합니다. 단순한 크롤러 요청은 방문 성과에 포함하지 않습니다."
         action={
-          <Button onClick={() => onNavigate('settings')} variant="outline">
-            <Link2 className="size-4" /> 실측 데이터 연결
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              onClick={() => onNavigate('report')}
+              className="bg-[#6957e8] hover:bg-[#5845d5]"
+            >
+              <FileDown className="size-4" /> PDF 진단 보고서
+            </Button>
+            <Button onClick={() => onNavigate('settings')} variant="outline">
+              <Link2 className="size-4" /> 실측 데이터 연결
+            </Button>
+          </div>
         }
       />
 
