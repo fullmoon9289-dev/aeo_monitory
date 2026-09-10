@@ -657,6 +657,173 @@
       }
     ]
   },
+  "performanceDemo": {
+    "status": "demo",
+    "label": "DEMO 데이터",
+    "description": "AI 답변 모니터와 방문 분석을 연결했을 때 표시되는 성과 화면 예시입니다. 현재 위드유의 실제 AI 노출 성과가 아닙니다.",
+    "measurement": {
+      "questionSet": "비브랜드 환자 질문 5개",
+      "validResponses": 242,
+      "baselineWindow": "발행 전 28일",
+      "postWindow": "발행 후 8~35일",
+      "rule": "같은 질문·모델·언어·지역 조건으로 반복 측정"
+    },
+    "summary": {
+      "mentionRate": {
+        "value": 37.2,
+        "deltaPp": 12.4,
+        "count": 90,
+        "denominator": 242
+      },
+      "shareOfVoice": {
+        "value": 23.6,
+        "deltaPp": 7.1,
+        "count": 90,
+        "denominator": 381
+      },
+      "citationRate": {
+        "value": 18.2,
+        "deltaPp": 9.8,
+        "count": 44,
+        "denominator": 242
+      },
+      "referralSessions": {
+        "value": 128,
+        "delta": 30
+      }
+    },
+    "trend": [
+      {
+        "period": "D-28",
+        "mentionRate": 22.1,
+        "shareOfVoice": 13.8,
+        "citationRate": 5.4
+      },
+      {
+        "period": "D-21",
+        "mentionRate": 23.7,
+        "shareOfVoice": 14.9,
+        "citationRate": 6.2
+      },
+      {
+        "period": "D-14",
+        "mentionRate": 25.4,
+        "shareOfVoice": 15.8,
+        "citationRate": 7.3
+      },
+      {
+        "period": "D-7",
+        "mentionRate": 26.4,
+        "shareOfVoice": 16.5,
+        "citationRate": 8.4
+      },
+      {
+        "period": "발행일",
+        "mentionRate": 26.8,
+        "shareOfVoice": 16.9,
+        "citationRate": 8.7
+      },
+      {
+        "period": "D+7",
+        "mentionRate": 29.6,
+        "shareOfVoice": 18.1,
+        "citationRate": 10.5
+      },
+      {
+        "period": "D+14",
+        "mentionRate": 33.8,
+        "shareOfVoice": 20.7,
+        "citationRate": 14.3
+      },
+      {
+        "period": "D+21",
+        "mentionRate": 36.1,
+        "shareOfVoice": 22.4,
+        "citationRate": 16.9
+      },
+      {
+        "period": "D+28",
+        "mentionRate": 37.2,
+        "shareOfVoice": 23.6,
+        "citationRate": 18.2
+      }
+    ],
+    "modelBreakdown": [
+      {
+        "model": "ChatGPT 검색",
+        "mentionRate": 45.0,
+        "citationRate": 22.5,
+        "answers": 80
+      },
+      {
+        "model": "Gemini",
+        "mentionRate": 36.3,
+        "citationRate": 17.5,
+        "answers": 80
+      },
+      {
+        "model": "Perplexity",
+        "mentionRate": 30.5,
+        "citationRate": 14.6,
+        "answers": 82
+      }
+    ],
+    "contentImpact": {
+      "contentTitle": "아토피·알레르기 검사, 어떤 검사가 언제 필요할까요?",
+      "status": "발행 시뮬레이션",
+      "target": {
+        "before": 26.4,
+        "after": 38.8,
+        "liftPp": 12.4
+      },
+      "control": {
+        "before": 24.0,
+        "after": 27.8,
+        "liftPp": 3.8
+      },
+      "estimatedContributionPp": 8.6
+    },
+    "traffic": {
+      "totalSessions": 128,
+      "crawlerRequests": 846,
+      "sources": [
+        {
+          "name": "ChatGPT",
+          "sessions": 62
+        },
+        {
+          "name": "Perplexity",
+          "sessions": 29
+        },
+        {
+          "name": "Gemini",
+          "sessions": 24
+        },
+        {
+          "name": "기타 AI",
+          "sessions": 13
+        }
+      ],
+      "topPages": [
+        {
+          "title": "아토피·알레르기 검사 가이드",
+          "sessions": 49
+        },
+        {
+          "title": "아토피 진료 안내",
+          "sessions": 31
+        },
+        {
+          "title": "양·한방 통합검사",
+          "sessions": 28
+        },
+        {
+          "title": "알레르기 진료 안내",
+          "sessions": 20
+        }
+      ]
+    }
+  },
   "contentDraft": {
     "id": "draft-atopy-testing-001",
     "question": "아토피 검사에는 어떤 종류가 있고 언제 필요한가요?",

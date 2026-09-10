@@ -73,3 +73,86 @@ button {
   background: #dcd5ff;
   color: #36268f;
 }
+
+.report-print-root {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.report-document {
+  width: 1280px;
+  max-width: none;
+}
+
+.report-sheet {
+  width: 1280px;
+  min-height: 720px;
+}
+
+@page {
+  size: 960pt 540pt;
+  margin: 0;
+}
+
+@media print {
+  html,
+  body {
+    background: #fff !important;
+  }
+
+  body {
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  body * {
+    visibility: hidden;
+  }
+
+  .report-document,
+  .report-document * {
+    visibility: visible;
+  }
+
+  .report-no-print {
+    display: none !important;
+  }
+
+  .report-document {
+    position: absolute;
+    inset: 0 auto auto 0;
+    width: 960pt !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  .report-document > * {
+    margin-block-start: 0 !important;
+  }
+
+  .report-sheet {
+    width: 960pt !important;
+    height: 540pt !important;
+    min-height: 540pt !important;
+    max-height: 540pt !important;
+    margin: 0 !important;
+    overflow: hidden !important;
+    border: 0 !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    break-after: page;
+    page-break-after: always;
+  }
+
+  .report-sheet:last-child {
+    break-after: auto;
+    page-break-after: auto;
+  }
+
+  .report-document *,
+  .report-document *::before,
+  .report-document *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}
