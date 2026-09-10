@@ -60,6 +60,7 @@ import {
   ChartTooltipContent,
 } from '@/components/ui/chart';
 import { DiagnosticReport } from '@/components/diagnostic-report';
+import { PublishingScheduler } from '@/components/publishing-scheduler';
 import clinicData from '@/data/withyou-clinic.json';
 
 type View =
@@ -258,7 +259,11 @@ export default function Home() {
             <OpportunitiesView onBrief={openBrief} />
           )}
           {active === 'studio' && (
-            <StudioView question={question} ready={briefReady} />
+            <StudioView
+              question={question}
+              ready={briefReady}
+              onNavigate={setActive}
+            />
           )}
           {active === 'monitor' && <MonitorView onNavigate={setActive} />}
           {active === 'report' && (
@@ -1019,7 +1024,15 @@ function OpportunitiesView({
   );
 }
 
-function StudioView({ question, ready }: { question: string; ready: boolean }) {
+function StudioView({
+  question,
+  ready,
+  onNavigate,
+}: {
+  question: string;
+  ready: boolean;
+  onNavigate: (view: View) => void;
+}) {
   const isPrimaryDraft = question === contentDraft.question;
   const [panel, setPanel] = useState<'draft' | 'comparison' | 'evidence'>(
     'draft',
@@ -1058,6 +1071,8 @@ function StudioView({ question, ready }: { question: string; ready: boolean }) {
           ),
         )}
       </div>
+
+      <PublishingScheduler onOpenSettings={() => onNavigate('settings')} />
 
       <div className="grid gap-5 xl:grid-cols-[1.45fr_.75fr]">
         <div className="overflow-hidden rounded-2xl border border-[#e8e6ee] bg-white">
