@@ -4,8 +4,10 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   Activity,
   ArrowRight,
+  BarChart3,
   Bell,
   Bot,
+  CalendarDays,
   Check,
   CheckCircle2,
   ChevronDown,
@@ -23,6 +25,8 @@ import {
   Map,
   Menu,
   MessageCircleQuestion,
+  MousePointerClick,
+  Quote,
   RefreshCw,
   Search,
   Settings,
@@ -35,12 +39,30 @@ import {
   UserRoundCheck,
   X,
 } from 'lucide-react';
+import {
+  Area,
+  AreaChart,
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ReferenceLine,
+  XAxis,
+  YAxis,
+} from 'recharts';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+  ChartContainer,
+  ChartLegend,
+  ChartLegendContent,
+  ChartTooltip,
+  ChartTooltipContent,
+} from '@/components/ui/chart';
 import clinicData from '@/data/withyou-clinic.json';
 
 type View =
   | 'command'
+  | 'performance'
   | 'journey'
   | 'opportunities'
   | 'studio'
@@ -58,6 +80,7 @@ const facts = clinicData.facts as Fact[];
 const opportunities = clinicData.opportunities;
 const publicBaseline = clinicData.publicWebBaseline;
 const contentDraft = clinicData.contentDraft;
+const performanceDemo = clinicData.performanceDemo;
 
 const statusMeta: Record<
   FactStatus,
@@ -109,6 +132,7 @@ const navItems: {
   badge?: number;
 }[] = [
   { id: 'command', label: '온보딩 센터', icon: Activity },
+  { id: 'performance', label: 'AI 노출 성과', icon: BarChart3 },
   { id: 'journey', label: '환자 질문 지도', icon: Map },
   {
     id: 'opportunities',
@@ -144,7 +168,7 @@ declare global {
 }
 
 export default function Home() {
-  const [active, setActive] = useState<View>('command');
+  const [active, setActive] = useState<View>('performance');
   const [question, setQuestion] = useState(opportunities[0].question);
   const [briefReady, setBriefReady] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -219,6 +243,9 @@ export default function Home() {
         <main className="mx-auto max-w-[1510px] px-5 py-7 sm:px-7 lg:px-9 lg:py-8">
           {active === 'command' && (
             <CommandCenter onNavigate={setActive} onBrief={openBrief} />
+          )}
+          {active === 'performance' && (
+            <PerformanceView onNavigate={setActive} />
           )}
           {active === 'journey' && (
             <JourneyView onNavigate={setActive} onBrief={openBrief} />
@@ -1306,6 +1333,574 @@ function StudioView({ question, ready }: { question: string; ready: boolean }) {
           </div>
         </div>
       </div>
+    </>
+  );
+}
+
+type PerformanceMetric =
+  | 'all'
+  | 'mentionRate'
+  | 'shareOfVoice'
+  | 'citationRate';
+
+function PerformanceView({ onNavigate }: { onNavigate: (view: View) => void }) {
+  const [metric, setMetric] = useState<PerformanceMetric>('all');
+  const summary = performanceDemo.summary;
+  const impact = performanceDemo.contentImpact;
+  const traffic = performanceDemo.traffic;
+  const maxTraffic = Math.max(...traffic.sources.map((item) => item.sessions));
+  const maxPageTraffic = Math.max(
+    ...traffic.topPages.map((item) => item.sessions),
+  );
+  const impactRows = [
+    {
+      group: '관련 질문군',
+      before: impact.target.before,
+      after: impact.target.after,
+    },
+    {
+      group: '비교 질문군',
+      before: impact.control.before,
+      after: impact.control.after,
+    },
+  ];
+  const performanceChartConfig = {
+    mentionRate: { label: '브랜드 언급률', color: '#6957e8' },
+    shareOfVoice: { label: '노출 점유율', color: '#238b79' },
+    citationRate: { label: '공식 도메인 인용률', color: '#e59045' },
+  };
+  const impactChartConfig = {
+    before: { label: '발행 전', color: '#c9c3dc' },
+    after: { label: '발행 후', color: '#6957e8' },
+  };
+  const metricCards = [
+    {
+      id: 'mentionRate',
+      label: 'AI 브랜드 언급률',
+      value: `${summary.mentionRate.value}%`,
+      delta: `+${summary.mentionRate.deltaPp}%p`,
+      detail: `${summary.mentionRate.count}/${summary.mentionRate.denominator}개 유효 답변`,
+      description: '모니터링 답변 중 위드유가 한 번 이상 언급된 비율',
+      icon: Quote,
+      tone: 'bg-[#efecff] text-[#6653df]',
+    },
+    {
+      id: 'shareOfVoice',
+      label: 'AI 노출 점유율',
+      value: `${summary.shareOfVoice.value}%`,
+      delta: `+${summary.shareOfVoice.deltaPp}%p`,
+      detail: `${summary.shareOfVoice.count}/${summary.shareOfVoice.denominator}건 브랜드 언급`,
+      description: '비교 브랜드 전체 언급에서 위드유가 차지한 비중',
+      icon: Target,
+      tone: 'bg-[#e8f7f1] text-[#218462]',
+    },
+    {
+      id: 'citationRate',
+      label: '공식 도메인 인용률',
+      value: `${summary.citationRate.value}%`,
+      delta: `+${summary.citationRate.deltaPp}%p`,
+      detail: `${summary.citationRate.count}/${summary.citationRate.denominator}개 유효 답변`,
+      description: 'AI 답변 출처에 withyouclinic.com이 포함된 비율',
+      icon: Globe2,
+      tone: 'bg-[#fff1e6] text-[#d77832]',
+    },
+    {
+      id: 'traffic',
+      label: 'AI 추천 유입',
+      value: String(summary.referralSessions.value),
+      unit: '세션',
+      delta: `+${summary.referralSessions.delta}`,
+      detail: 'AI 링크를 클릭한 사람의 방문',
+      description: 'referrer 또는 검증된 UTM으로 확인된 실제 방문 세션',
+      icon: MousePointerClick,
+      tone: 'bg-[#e8f2ff] text-[#397ac5]',
+    },
+  ] as const;
+
+  return (
+    <>
+      <Heading
+        eyebrow="AI Visibility Performance"
+        title="콘텐츠 발행 전·후, AI 노출이 얼마나 달라졌는지 보여줍니다"
+        description="같은 환자 질문과 AI 조건을 반복 측정해 브랜드 언급, 공식 홈페이지 인용, 실제 추천 방문을 각각 확인합니다. 단순한 크롤러 요청은 방문 성과에 포함하지 않습니다."
+        action={
+          <Button onClick={() => onNavigate('settings')} variant="outline">
+            <Link2 className="size-4" /> 실측 데이터 연결
+          </Button>
+        }
+      />
+
+      <div className="mb-5 flex flex-col gap-3 rounded-2xl border border-[#e4dcaa] bg-[#fffdf2] p-4 sm:flex-row sm:items-center">
+        <div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#f6e9a8] text-[#7c6411]">
+          <BarChart3 className="size-5" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <Badge className="border border-[#d8c765] bg-[#fff7c9] text-[#6e590f]">
+              {performanceDemo.label}
+            </Badge>
+            <span className="text-xs font-bold text-[#5a4a16]">
+              측정 화면 미리보기
+            </span>
+          </div>
+          <p className="mt-1 text-[11px] leading-5 text-[#766b43]">
+            {performanceDemo.description} AI 답변 모니터·방문 분석 연결 후 같은
+            위치가 실측값으로 자동 전환됩니다.
+          </p>
+        </div>
+        <Button
+          size="sm"
+          className="shrink-0 bg-[#2d2a21] text-white hover:bg-[#17150f]"
+          onClick={() => onNavigate('settings')}
+        >
+          연결 방법 보기 <ArrowRight className="size-3.5" />
+        </Button>
+      </div>
+
+      <section className="mb-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {metricCards.map((item) => {
+          const Icon = item.icon;
+          return (
+            <article
+              key={item.id}
+              className="rounded-2xl border border-[#e8e6ee] bg-white p-5 shadow-[0_2px_10px_rgba(31,28,45,.025)]"
+              title={item.description}
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-[#777381]">
+                      {item.label}
+                    </span>
+                    <span className="rounded bg-[#f3f1f6] px-1.5 py-0.5 text-[8px] font-bold text-[#8b8793]">
+                      예시
+                    </span>
+                  </div>
+                  <p className="mt-1 text-[9px] leading-4 text-[#9a96a3]">
+                    {item.description}
+                  </p>
+                </div>
+                <span
+                  className={`grid size-8 shrink-0 place-items-center rounded-lg ${item.tone}`}
+                >
+                  <Icon className="size-4" />
+                </span>
+              </div>
+              <div className="mt-4 flex flex-wrap items-end gap-x-2 gap-y-1">
+                <span className="text-[30px] font-bold leading-none tracking-[-.04em]">
+                  {item.value}
+                </span>
+                {'unit' in item ? (
+                  <span className="mb-0.5 text-xs text-[#8e8a96]">
+                    {item.unit}
+                  </span>
+                ) : null}
+                <span className="mb-0.5 rounded-full bg-[#e8f7f1] px-2 py-1 text-[9px] font-bold text-[#218462]">
+                  {item.delta}
+                </span>
+              </div>
+              <div className="mt-3 text-[10px] font-medium text-[#777381]">
+                {item.detail}
+              </div>
+            </article>
+          );
+        })}
+      </section>
+
+      <section className="mb-5 grid gap-4 xl:grid-cols-[minmax(0,1.7fr)_minmax(300px,.7fr)]">
+        <div className="rounded-2xl border border-[#e8e6ee] bg-white p-5 sm:p-6">
+          <div className="flex flex-col justify-between gap-4 sm:flex-row sm:items-start">
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-sm font-bold">AI 노출 성과 추이</h2>
+                <Badge variant="outline" className="text-[8px] text-[#777381]">
+                  예시
+                </Badge>
+              </div>
+              <p className="mt-1 text-[10px] leading-4 text-[#8f8b98]">
+                발행 전 28일과 반영 대기 7일 후의 동일 조건 측정값을 비교합니다.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-1 rounded-lg bg-[#f3f1f6] p-1">
+              {[
+                ['all', '전체'],
+                ['mentionRate', '언급률'],
+                ['shareOfVoice', '점유율'],
+                ['citationRate', '인용률'],
+              ].map(([id, label]) => (
+                <button
+                  key={id}
+                  onClick={() => setMetric(id as PerformanceMetric)}
+                  className={`rounded-md px-2.5 py-1.5 text-[9px] font-bold transition ${metric === id ? 'bg-white text-[#5d49d2] shadow-sm' : 'text-[#8f8b98] hover:text-[#5f5b67]'}`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+          <ChartContainer
+            config={performanceChartConfig}
+            className="mt-5 h-[310px] w-full aspect-auto"
+            initialDimension={{ width: 760, height: 310 }}
+          >
+            <AreaChart
+              accessibilityLayer
+              data={performanceDemo.trend}
+              margin={{ top: 12, right: 12, left: -12, bottom: 4 }}
+            >
+              <defs>
+                <linearGradient id="mention-fill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#6957e8" stopOpacity={0.22} />
+                  <stop offset="95%" stopColor="#6957e8" stopOpacity={0.01} />
+                </linearGradient>
+                <linearGradient id="sov-fill" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%" stopColor="#238b79" stopOpacity={0.18} />
+                  <stop offset="95%" stopColor="#238b79" stopOpacity={0.01} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid vertical={false} stroke="#eeeaf3" />
+              <XAxis
+                dataKey="period"
+                tickLine={false}
+                axisLine={false}
+                tickMargin={10}
+                fontSize={10}
+              />
+              <YAxis
+                domain={[0, 50]}
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={(value) => `${value}%`}
+                fontSize={10}
+              />
+              <ChartTooltip
+                cursor={{ stroke: '#c9c3dc', strokeDasharray: '4 4' }}
+                content={
+                  <ChartTooltipContent
+                    formatter={(value, name) => (
+                      <div className="flex min-w-36 items-center justify-between gap-4">
+                        <span className="text-[#777381]">
+                          {performanceChartConfig[
+                            name as keyof typeof performanceChartConfig
+                          ]?.label ?? String(name)}
+                        </span>
+                        <span className="font-mono font-bold text-[#2a2831]">
+                          {Number(value).toFixed(1)}%
+                        </span>
+                      </div>
+                    )}
+                  />
+                }
+              />
+              <ReferenceLine
+                x="발행일"
+                stroke="#e59045"
+                strokeDasharray="4 4"
+                label={{
+                  value: '콘텐츠 발행',
+                  position: 'insideTopRight',
+                  fill: '#a96429',
+                  fontSize: 10,
+                }}
+              />
+              {(metric === 'all' || metric === 'mentionRate') && (
+                <Area
+                  dataKey="mentionRate"
+                  type="monotone"
+                  stroke="#6957e8"
+                  strokeWidth={2.5}
+                  fill="url(#mention-fill)"
+                  dot={{ r: 2.5, fill: '#fff', strokeWidth: 2 }}
+                  activeDot={{ r: 4 }}
+                />
+              )}
+              {(metric === 'all' || metric === 'shareOfVoice') && (
+                <Area
+                  dataKey="shareOfVoice"
+                  type="monotone"
+                  stroke="#238b79"
+                  strokeWidth={2.25}
+                  fill="url(#sov-fill)"
+                  dot={{ r: 2.5, fill: '#fff', strokeWidth: 2 }}
+                  activeDot={{ r: 4 }}
+                />
+              )}
+              {(metric === 'all' || metric === 'citationRate') && (
+                <Area
+                  dataKey="citationRate"
+                  type="monotone"
+                  stroke="#e59045"
+                  strokeWidth={2.25}
+                  fill="transparent"
+                  dot={{ r: 2.5, fill: '#fff', strokeWidth: 2 }}
+                  activeDot={{ r: 4 }}
+                />
+              )}
+              {metric === 'all' ? (
+                <ChartLegend content={<ChartLegendContent />} />
+              ) : null}
+            </AreaChart>
+          </ChartContainer>
+          <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-[#f0eef4] pt-4 text-[9px] text-[#8e8a96]">
+            <span className="inline-flex items-center gap-1.5">
+              <CalendarDays className="size-3.5 text-[#6957e8]" />
+              {performanceDemo.measurement.baselineWindow} ·{' '}
+              {performanceDemo.measurement.postWindow}
+            </span>
+            <span>{performanceDemo.measurement.questionSet}</span>
+            <span>
+              {performanceDemo.measurement.validResponses}개 유효 답변
+            </span>
+          </div>
+        </div>
+
+        <aside className="rounded-2xl border border-[#e8e6ee] bg-white p-5 sm:p-6">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-bold">AI 엔진별 결과</h2>
+              <p className="mt-1 text-[10px] text-[#8f8b98]">
+                동일 질문 세트 기준 · 예시
+              </p>
+            </div>
+            <Bot className="size-5 text-[#6957e8]" />
+          </div>
+          <div className="mt-5 space-y-5">
+            {performanceDemo.modelBreakdown.map((item) => (
+              <div key={item.model}>
+                <div className="flex items-center justify-between gap-3 text-[11px]">
+                  <span className="font-semibold">{item.model}</span>
+                  <span className="font-bold text-[#5d49d2]">
+                    {item.mentionRate}%
+                  </span>
+                </div>
+                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-[#efedf4]">
+                  <div
+                    className="h-full rounded-full bg-[#6957e8]"
+                    style={{ width: `${item.mentionRate}%` }}
+                  />
+                </div>
+                <div className="mt-2 flex items-center justify-between text-[9px] text-[#96929e]">
+                  <span>공식 인용 {item.citationRate}%</span>
+                  <span>{item.answers}개 답변</span>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="mt-6 rounded-xl bg-[#f7f5ff] p-4">
+            <div className="text-[10px] font-bold text-[#5d49d2]">
+              측정 조건을 함께 저장합니다
+            </div>
+            <p className="mt-2 text-[9px] leading-4 text-[#777381]">
+              질문 버전, 모델, 언어, 지역, 웹 검색 사용 여부가 달라지면 새
+              기준선으로 분리합니다.
+            </p>
+          </div>
+        </aside>
+      </section>
+
+      <section className="grid gap-4 xl:grid-cols-2">
+        <div className="rounded-2xl border border-[#e8e6ee] bg-white p-5 sm:p-6">
+          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-sm font-bold">콘텐츠 발행 전·후 비교</h2>
+                <Badge className="bg-[#fff3df] text-[8px] text-[#9b641f]">
+                  {impact.status}
+                </Badge>
+              </div>
+              <p className="mt-1 max-w-xl text-[10px] leading-4 text-[#8f8b98]">
+                {impact.contentTitle}
+              </p>
+            </div>
+            <div className="shrink-0 rounded-xl bg-[#eaf8f2] px-3 py-2 text-right">
+              <div className="text-[9px] font-semibold text-[#4c7b69]">
+                추정 콘텐츠 기여
+              </div>
+              <div className="mt-0.5 text-xl font-bold text-[#218462]">
+                +{impact.estimatedContributionPp}%p
+              </div>
+            </div>
+          </div>
+          <ChartContainer
+            config={impactChartConfig}
+            className="mt-5 h-[230px] w-full aspect-auto"
+            initialDimension={{ width: 620, height: 230 }}
+          >
+            <BarChart
+              accessibilityLayer
+              data={impactRows}
+              margin={{ top: 10, right: 8, left: -14, bottom: 0 }}
+            >
+              <CartesianGrid vertical={false} stroke="#eeeaf3" />
+              <XAxis
+                dataKey="group"
+                tickLine={false}
+                axisLine={false}
+                tickMargin={8}
+                fontSize={10}
+              />
+              <YAxis
+                domain={[0, 50]}
+                tickLine={false}
+                axisLine={false}
+                tickFormatter={(value) => `${value}%`}
+                fontSize={10}
+              />
+              <ChartTooltip content={<ChartTooltipContent />} />
+              <ChartLegend content={<ChartLegendContent />} />
+              <Bar
+                dataKey="before"
+                fill="#c9c3dc"
+                radius={[5, 5, 0, 0]}
+                maxBarSize={42}
+              />
+              <Bar
+                dataKey="after"
+                fill="#6957e8"
+                radius={[5, 5, 0, 0]}
+                maxBarSize={42}
+              />
+            </BarChart>
+          </ChartContainer>
+          <div className="grid gap-2 rounded-xl bg-[#faf9fc] p-4 text-[9px] leading-4 text-[#6f6b76] sm:grid-cols-3">
+            <div>
+              <span className="font-bold text-[#2f2d38]">관찰 상승</span>
+              <br />
+              관련 질문군 +{impact.target.liftPp}%p
+            </div>
+            <div>
+              <span className="font-bold text-[#2f2d38]">자연 변화</span>
+              <br />
+              비교 질문군 +{impact.control.liftPp}%p
+            </div>
+            <div>
+              <span className="font-bold text-[#218462]">추정 기여</span>
+              <br />
+              {impact.target.liftPp} − {impact.control.liftPp} = +
+              {impact.estimatedContributionPp}%p
+            </div>
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-[#e8e6ee] bg-white p-5 sm:p-6">
+          <div className="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="text-sm font-bold">AI 추천 유입</h2>
+                <Badge variant="outline" className="text-[8px] text-[#777381]">
+                  예시
+                </Badge>
+              </div>
+              <p className="mt-1 text-[10px] text-[#8f8b98]">
+                AI 답변의 링크를 클릭해 홈페이지에 방문한 사람만 집계합니다.
+              </p>
+            </div>
+            <div className="flex items-end gap-1.5">
+              <span className="text-2xl font-bold">
+                {traffic.totalSessions}
+              </span>
+              <span className="mb-0.5 text-[10px] text-[#8f8b98]">세션</span>
+            </div>
+          </div>
+          <div className="mt-6 grid gap-6 sm:grid-cols-2">
+            <div>
+              <h3 className="text-[10px] font-bold text-[#686472]">유입 AI</h3>
+              <div className="mt-3 space-y-3">
+                {traffic.sources.map((item) => (
+                  <div key={item.name}>
+                    <div className="flex justify-between text-[9px]">
+                      <span>{item.name}</span>
+                      <span className="font-semibold">{item.sessions}</span>
+                    </div>
+                    <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[#efedf4]">
+                      <div
+                        className="h-full rounded-full bg-[#6f5ce6]"
+                        style={{
+                          width: `${(item.sessions / maxTraffic) * 100}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div>
+              <h3 className="text-[10px] font-bold text-[#686472]">
+                상위 유입 페이지
+              </h3>
+              <div className="mt-3 space-y-3">
+                {traffic.topPages.map((item) => (
+                  <div key={item.title}>
+                    <div className="flex justify-between gap-3 text-[9px]">
+                      <span className="truncate">{item.title}</span>
+                      <span className="shrink-0 font-semibold">
+                        {item.sessions}
+                      </span>
+                    </div>
+                    <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-[#efedf4]">
+                      <div
+                        className="h-full rounded-full bg-[#33a47e]"
+                        style={{
+                          width: `${(item.sessions / maxPageTraffic) * 100}%`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="mt-6 flex items-start gap-3 rounded-xl border border-[#f0dfd3] bg-[#fffaf6] p-3">
+            <Bot className="mt-0.5 size-4 shrink-0 text-[#b56b34]" />
+            <div>
+              <div className="text-[10px] font-bold text-[#7e4f2d]">
+                AI 크롤러 활동 {traffic.crawlerRequests}회 · 방문자 수 아님
+              </div>
+              <p className="mt-1 text-[9px] leading-4 text-[#8b7465]">
+                GPTBot 같은 수집 요청은 콘텐츠 접근 상태를 보는 보조 신호이며,
+                브랜드 노출이나 사람 방문으로 합산하지 않습니다.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <div className="mt-5 grid gap-3 md:grid-cols-3">
+        {[
+          ['같은 조건으로 비교', performanceDemo.measurement.rule, RefreshCw],
+          [
+            '발행 전 기준선 필수',
+            '기준선이 없으면 과거 값을 만들지 않고 현재부터 수집합니다.',
+            CalendarDays,
+          ],
+          [
+            '숫자마다 원본 증거',
+            '질문·모델·측정 시각·AI 답변·인용 URL을 함께 보관합니다.',
+            FileCheck2,
+          ],
+        ].map(([title, description, Icon]) => {
+          const ItemIcon = Icon as typeof Activity;
+          return (
+            <div
+              key={String(title)}
+              className="rounded-xl border border-[#e8e6ee] bg-white p-4"
+            >
+              <div className="flex items-center gap-2">
+                <ItemIcon className="size-4 text-[#6957e8]" />
+                <h3 className="text-[11px] font-bold">{String(title)}</h3>
+              </div>
+              <p className="mt-2 text-[9px] leading-4 text-[#777381]">
+                {String(description)}
+              </p>
+            </div>
+          );
+        })}
+      </div>
+      <InfoNote>
+        “콘텐츠 기여”는 동일한 질문·모델 조건의 발행 전후 변화에서 비교 질문군의
+        자연 변화를 뺀 추정치입니다. 비교군이 없으면 인과 효과가 아니라 “발행 후
+        관찰 변화”로만 표시합니다.
+      </InfoNote>
     </>
   );
 }
