@@ -4,6 +4,7 @@ export const publishingSchedules = sqliteTable(
   'publishing_schedules',
   {
     id: text('id').primaryKey(),
+    clinicId: text('clinic_id').notNull().default('withyou-clinic'),
     intervalDays: integer('interval_days').notNull(),
     totalCount: integer('total_count').notNull(),
     startDate: text('start_date').notNull(),
@@ -16,7 +17,7 @@ export const publishingSchedules = sqliteTable(
     createdAt: text('created_at').notNull(),
     updatedAt: text('updated_at').notNull(),
   },
-  (table) => [index('idx_publishing_schedules_created_at').on(table.createdAt)],
+  (table) => [index('idx_publishing_schedules_created_at').on(table.createdAt), index('idx_publishing_schedules_clinic_created').on(table.clinicId, table.createdAt)],
 );
 
 export const publishingQueueItems = sqliteTable(
@@ -46,4 +47,21 @@ export const publishingQueueItems = sqliteTable(
       table.scheduledFor,
     ),
   ],
+);
+
+export const searchConsoleImports = sqliteTable(
+  'search_console_imports',
+  {
+    id: text('id').primaryKey(),
+    clinicId: text('clinic_id').notNull(),
+    propertyUrl: text('property_url').notNull(),
+    startDate: text('start_date').notNull(),
+    endDate: text('end_date').notNull(),
+    dimension: text('dimension').notNull(),
+    filename: text('filename').notNull(),
+    rowCount: integer('row_count').notNull(),
+    rowsJson: text('rows_json').notNull(),
+    createdAt: text('created_at').notNull(),
+  },
+  (table) => [index('idx_search_imports_clinic_created').on(table.clinicId, table.createdAt)],
 );

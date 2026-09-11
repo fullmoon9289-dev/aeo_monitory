@@ -62,8 +62,11 @@ import {
 import { DiagnosticReport } from '@/components/diagnostic-report';
 import { PublishingScheduler } from '@/components/publishing-scheduler';
 import clinicData from '@/data/withyou-clinic.json';
+import { ClinicWorkspace, ClinicSwitcher } from '@/components/clinic-workspace';
+import { SearchConsolePanel } from '@/components/search-console-panel';
 
 type View =
+  | 'search-console'
   | 'command'
   | 'performance'
   | 'journey'
@@ -152,6 +155,7 @@ const navItems: {
     badge: publicBaseline.summary.queries,
   },
   { id: 'report', label: 'PDF 진단 보고서', icon: FileDown },
+  { id: 'search-console', label: '서치콘솔 분석', icon: Search },
 ];
 
 declare global {
@@ -173,6 +177,10 @@ declare global {
 }
 
 export default function Home() {
+  return <ClinicWorkspace withyou={<WithyouWorkspace />} />;
+}
+
+function WithyouWorkspace() {
   const [active, setActive] = useState<View>('performance');
   const [question, setQuestion] = useState(opportunities[0].question);
   const [briefReady, setBriefReady] = useState(false);
@@ -269,6 +277,7 @@ export default function Home() {
           {active === 'report' && (
             <DiagnosticReport onBack={() => setActive('performance')} />
           )}
+          {active === 'search-console' && <SearchConsolePanel key="withyou-clinic" clinicId="withyou-clinic" />}
           {active === 'knowledge' && <KnowledgeView />}
           {active === 'settings' && <SettingsView />}
         </main>
@@ -322,23 +331,7 @@ function Sidebar({
         </div>
 
         <div className="p-4">
-          <button
-            onClick={() => onSelect('knowledge')}
-            className="flex w-full items-center gap-3 rounded-xl border border-[#dcd7fa] bg-[#f8f7ff] px-3 py-2.5 text-left transition hover:border-[#c9c0fb]"
-          >
-            <span className="grid size-8 place-items-center rounded-lg bg-[#e9f3ff] text-[#397ac5]">
-              <Hospital className="size-4" />
-            </span>
-            <span className="min-w-0 flex-1">
-              <span className="block truncate text-xs font-semibold">
-                {clinicData.hospital.brandName}
-              </span>
-              <span className="mt-0.5 block text-[10px] text-[#8f8b98]">
-                {clinicData.hospital.category} · 강남구
-              </span>
-            </span>
-            <ChevronDown className="size-3.5 text-[#9793a3]" />
-          </button>
+          <ClinicSwitcher />
         </div>
 
         <nav
@@ -463,12 +456,7 @@ function Topbar({ onMenu }: { onMenu: () => void }) {
           <span className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-[#f05d62] ring-2 ring-white" />
         </Button>
         <div className="mx-1 h-6 w-px bg-[#e9e7ef]" />
-        <div className="flex items-center gap-2 rounded-lg p-1.5">
-          <div className="grid size-8 place-items-center rounded-full bg-[#e9f3ff] text-[10px] font-bold text-[#3769a3]">
-            WU
-          </div>
-          <span className="hidden text-xs font-semibold sm:block">위드유</span>
-        </div>
+        <ClinicSwitcher compact />
       </div>
     </header>
   );

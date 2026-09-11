@@ -8,6 +8,13 @@
       "when": 1789050118598,
       "tag": "0000_common_moon_knight",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1789111237819,
+      "tag": "0001_secret_cargill",
+      "breakpoints": true
     }
   ]
 }

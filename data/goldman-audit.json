@@ -1,0 +1,97 @@
+{
+  "clinicId": "goldman-clinic",
+  "checkedDate": "2026-09-11",
+  "scope": "대표 도메인 · 5개 지점 안내를 포함한 공개 페이지 7개와 수집 파일 3개 표본 점검",
+  "pages": [
+    {
+      "name": "대표 홈페이지",
+      "url": "https://www.gold-man.com/",
+      "status": 200,
+      "canonical": "https://www.gold-man.com/",
+      "description": true,
+      "structuredDataBlocks": 2,
+      "noindex": false
+    },
+    {
+      "name": "의료정보 홈",
+      "url": "https://www.gold-man.com/docs/",
+      "status": 200,
+      "canonical": "https://www.gold-man.com/docs/index.html",
+      "description": true,
+      "structuredDataBlocks": 1,
+      "noindex": false
+    },
+    {
+      "name": "의료진 안내",
+      "url": "https://www.gold-man.com/story/team",
+      "status": 200,
+      "canonical": "https://www.gold-man.com/story/team",
+      "description": true,
+      "structuredDataBlocks": 2,
+      "noindex": false
+    },
+    {
+      "name": "진료시간",
+      "url": "https://www.gold-man.com/support/hours",
+      "status": 200,
+      "canonical": "https://www.gold-man.com/support/hours",
+      "description": true,
+      "structuredDataBlocks": 1,
+      "noindex": false
+    },
+    {
+      "name": "비급여 안내",
+      "url": "https://www.gold-man.com/support/pricing",
+      "status": 200,
+      "canonical": "https://www.gold-man.com/support/pricing",
+      "description": true,
+      "structuredDataBlocks": 1,
+      "noindex": false
+    },
+    {
+      "name": "전립선비대증 수술",
+      "url": "https://www.gold-man.com/prostate/bph-surgery",
+      "status": 200,
+      "canonical": "https://www.gold-man.com/prostate/bph-surgery",
+      "description": true,
+      "structuredDataBlocks": 3,
+      "noindex": false
+    },
+    {
+      "name": "의료정보: 의료진 소개",
+      "url": "https://www.gold-man.com/docs/team/medicalteam-overview.html",
+      "status": 200,
+      "canonical": "https://www.gold-man.com/docs/team/medicalteam-overview.html",
+      "description": true,
+      "structuredDataBlocks": 2,
+      "noindex": false
+    }
+  ],
+  "sitemaps": {
+    "main": {
+      "entries": 72,
+      "uniqueUrls": 70
+    },
+    "docs": {
+      "entries": 104,
+      "uniqueUrls": 104
+    }
+  },
+  "resources": [
+    {
+      "name": "robots.txt",
+      "url": "https://www.gold-man.com/robots.txt",
+      "status": 200
+    },
+    {
+      "name": "대표 사이트맵",
+      "url": "https://www.gold-man.com/sitemap.xml",
+      "status": 200
+    },
+    {
+      "name": "의료정보 사이트맵",
+      "url": "https://www.gold-man.com/docs/sitemap.xml",
+      "status": 200
+    }
+  ]
+}

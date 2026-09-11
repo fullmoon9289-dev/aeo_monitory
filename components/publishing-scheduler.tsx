@@ -15,7 +15,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import clinicData from '@/data/withyou-clinic.json';
+import { plannedTopic, validDate, type ClinicId } from '@/lib/clinics';
 
 type QueueStatus = 'review_required' | 'draft_required' | 'topic_pending';
 
@@ -63,9 +63,9 @@ const statusMeta: Record<
     description: '주제 선정 완료',
   },
   topic_pending: {
-    label: '주제 자동 선정 예정',
+    label: '추가 주제 선정 필요',
     className: 'bg-[#f1f0f4] text-[#777381]',
-    description: '검색 데이터 연결 후 확정',
+    description: '담당자 주제 선정 대기',
   },
 };
 
@@ -104,38 +104,26 @@ function formatTime(value: string) {
 }
 
 function makePreviewItems(
+  clinicId: ClinicId,
   startDate: string,
   publishTime: string,
   intervalDays: number,
   totalCount: number,
 ): QueueItem[] {
-  if (!startDate) return [];
-  return Array.from({ length: totalCount }, (_, index) => {
-    const opportunity = clinicData.opportunities[index];
-    const isFirstDraft = index === 0;
-    return {
-      id: `preview-${index}`,
-      sequence: index + 1,
-      question:
-        opportunity?.question ??
-        `검색 데이터 기반 주제 자동 선정 #${index + 1}`,
-      title: isFirstDraft
-        ? clinicData.contentDraft.h1
-        : (opportunity?.question.replace(/\?$/, '') ??
-          `주제 자동 선정 예정 #${index + 1}`),
-      scheduledFor: `${addDays(startDate, index * intervalDays)}T${publishTime}:00+09:00`,
-      status: isFirstDraft
-        ? 'review_required'
-        : opportunity
-          ? 'draft_required'
-          : 'topic_pending',
-    };
-  });
+  if (!validDate(startDate)) return [];
+  return Array.from({ length: totalCount }, (_, index) => ({
+    id: `preview-${index}`,
+    sequence: index + 1,
+    ...plannedTopic(clinicId, index),
+    scheduledFor: `${addDays(startDate, index * intervalDays)}T${publishTime}:00+09:00`,
+  }));
 }
 
 export function PublishingScheduler({
+  clinicId = 'withyou-clinic',
   onOpenSettings,
 }: {
+  clinicId?: ClinicId;
   onOpenSettings: () => void;
 }) {
   const [intervalDays, setIntervalDays] = useState(1);
@@ -150,7 +138,8 @@ export function PublishingScheduler({
 
   useEffect(() => {
     const controller = new AbortController();
-    fetch('/api/publishing-schedules', { signal: controller.signal })
+    setLoading(true); setSchedule(null); setError(''); setNotice('');
+    fetch(`/api/publishing-schedules?clinicId=${clinicId}`, { signal: controller.signal })
       .then(async (response) => {
         const data = (await response.json()) as {
           schedule?: PublishingSchedule | null;
@@ -158,6 +147,7 @@ export function PublishingScheduler({
         };
         if (!response.ok)
           throw new Error(data.error ?? '일정을 불러오지 못했습니다.');
+        if (controller.signal.aborted) return;
         if (data.schedule) {
           setSchedule(data.schedule);
           setIntervalDays(data.schedule.intervalDays);
@@ -179,13 +169,13 @@ export function PublishingScheduler({
             : '일정을 불러오지 못했습니다.',
         );
       })
-      .finally(() => setLoading(false));
+      .finally(() => { if (!controller.signal.aborted) setLoading(false); });
     return () => controller.abort();
-  }, []);
+  }, [clinicId]);
 
   const previewItems = useMemo(
-    () => makePreviewItems(startDate, publishTime, intervalDays, totalCount),
-    [intervalDays, publishTime, startDate, totalCount],
+    () => makePreviewItems(clinicId, startDate, publishTime, intervalDays, totalCount),
+    [clinicId, intervalDays, publishTime, startDate, totalCount],
   );
   const lastDate = previewItems.at(-1)?.scheduledFor.slice(0, 10) ?? '';
   const formMatchesSaved =
@@ -205,6 +195,7 @@ export function PublishingScheduler({
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({
+          clinicId,
           intervalDays,
           totalCount,
           startDate,
@@ -257,9 +248,9 @@ export function PublishingScheduler({
         </div>
         <div className="rounded-xl border border-[#e7d6bb] bg-[#fffaf0] px-4 py-3 text-[10px] leading-4 text-[#8b672d]">
           <div className="flex items-center gap-1.5 font-bold">
-            <CircleAlert className="size-3.5" /> WordPress 연결 전
+            <CircleAlert className="size-3.5" /> 게시 연동 전
           </div>
-          일정은 저장되며 실제 자동 발행은 CMS 연결 후 시작됩니다.
+          현재는 일정만 저장됩니다. 실제 게시 기능은 제공하지 않습니다.
         </div>
       </div>
 
@@ -369,7 +360,7 @@ export function PublishingScheduler({
               <Clock3 className="size-3.5" /> 계획 요약
             </div>
             <p className="mt-2 text-sm font-bold leading-6">
-              {startDate ? formatDate(startDate) : '날짜 선택'}부터{' '}
+              {validDate(startDate) ? formatDate(startDate) : '날짜 선택'}부터{' '}
               {intervalDays}일마다 {formatTime(publishTime)}, 총 {totalCount}개
             </p>
             <p className="mt-1 text-[10px] text-white/50">
@@ -401,7 +392,7 @@ export function PublishingScheduler({
 
           <Button
             onClick={saveSchedule}
-            disabled={saving || loading || !startDate || formMatchesSaved}
+            disabled={saving || loading || !validDate(startDate) || !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(publishTime) || formMatchesSaved}
             className="mt-4 w-full bg-[#6957e8] hover:bg-[#5845d5]"
           >
             {saving ? (
@@ -422,7 +413,7 @@ export function PublishingScheduler({
             <div>
               <h3 className="text-sm font-bold">콘텐츠 대기열</h3>
               <p className="mt-1 text-[10px] text-[#9692a0]">
-                저장된 순서대로 초안 작성과 검수가 진행됩니다.
+                저장한 순서를 기준으로 담당자가 초안 작성과 검수를 진행합니다.
               </p>
             </div>
             <Badge variant="outline" className="h-7">
@@ -482,11 +473,10 @@ export function PublishingScheduler({
           <div className="mt-4 grid gap-3 sm:grid-cols-[1fr_auto] sm:items-center">
             <div className="flex items-start gap-2 rounded-xl border border-[#d9d4f4] bg-[#f7f5ff] p-3 text-[10px] leading-5 text-[#625a7c]">
               <ShieldCheck className="mt-0.5 size-4 shrink-0 text-[#6957e8]" />
-              의료진 승인 완료 → WordPress 예약 성공 → 공식 URL 확인 순서로만
-              상태가 변경됩니다.
+              이 목록은 편집 계획입니다. 의료진 검토와 실제 게시는 담당자가 별도로 진행해야 합니다.
             </div>
             <Button onClick={onOpenSettings} variant="outline" size="sm">
-              <Link2 className="size-3.5" /> WordPress 연결
+              <Link2 className="size-3.5" /> {clinicId === 'goldman-clinic' ? '검색 자료 가져오기' : '연결 설정 보기'}
             </Button>
           </div>
         </div>
