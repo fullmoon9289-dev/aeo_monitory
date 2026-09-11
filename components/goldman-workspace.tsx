@@ -1,8 +1,11 @@
 'use client';
 
-import { useState } from 'react';
-import { Activity, ArrowRight, ArrowUpRight, CheckCircle2, FileDown, FileText, Search, CalendarDays, ShieldCheck, TriangleAlert, Layers3 } from 'lucide-react';
-import { ClinicSwitcher } from '@/components/clinic-workspace';
+import { useEffect, useState } from 'react';
+import { Activity, ArrowRight, ArrowUpRight, FileDown, Search, CalendarDays, ShieldCheck } from 'lucide-react';
+import { WorkspaceShell } from '@/components/workspace-shell';
+import { GoldmanDashboard } from '@/components/goldman-dashboard';
+import { BarChart3, Database, Map, Settings } from 'lucide-react';
+import type { SearchImport } from '@/lib/search-console';
 import { Button } from '@/components/ui/button';
 import { PublishingScheduler } from '@/components/publishing-scheduler';
 import { SearchConsolePanel } from '@/components/search-console-panel';
@@ -10,12 +13,18 @@ import { goldmanQuestions } from '@/lib/clinics';
 import audit from '@/data/goldman-audit.json';
 import { goldmanFindings } from '@/data/goldman-findings';
 
-type View = 'overview' | 'questions' | 'search' | 'plan' | 'report';
-const tabs = [{id:'overview',label:'진단 요약',icon:Activity},{id:'questions',label:'환자 질문 활용',icon:FileText},{id:'search',label:'서치콘솔 분석',icon:Search},{id:'plan',label:'발행 계획',icon:CalendarDays},{id:'report',label:'진단 보고서',icon:FileDown}] as const;
+type View = 'overview' | 'questions' | 'search' | 'plan' | 'report' | 'knowledge' | 'settings';
+const tabs = [
+  { id: 'overview', label: '진단 대시보드', icon: BarChart3 },
+  { id: 'questions', label: '환자 질문 지도', icon: Map },
+  { id: 'plan', label: '콘텐츠 발행 계획', icon: CalendarDays },
+  { id: 'report', label: '진단 보고서', icon: FileDown },
+  { id: 'search', label: '서치콘솔 분석', icon: Search },
+] as const;
 const panel = 'rounded-2xl border border-[#e5e1ef] bg-white p-5 sm:p-7';
 
 function SourceLink({ label, url }: { label: string; url: string }) {
-  return <a href={url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-semibold text-[#6957e8] underline-offset-4 hover:underline">{label}<ArrowUpRight className="size-3.5" /></a>;
+  return <a href={url} target="_blank" rel="noreferrer" className="inline-flex max-w-full items-center gap-1 break-all text-xs font-semibold text-[#6957e8] underline-offset-4 hover:underline">{label}<ArrowUpRight className="size-3.5" /></a>;
 }
 
 function downloadReport() {
@@ -38,25 +47,36 @@ function downloadReport() {
 export function GoldmanWorkspace() {
   const [view,setView] = useState<View>('overview');
   const [selectedQuestion,setSelectedQuestion] = useState(0);
-  return <div className="min-h-screen bg-[#f7f7fa] text-[#20202a]">
-    <header className="border-b border-[#e8e5ef] bg-white"><div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-5 py-4 sm:px-8"><div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded-xl bg-[#6957e8] text-white"><Activity className="size-5" /></span><div className="leading-5"><span className="font-bold">MediAnswer</span><div className="text-[11px] text-[#888294]">병원 AEO 워크스페이스</div></div></div><ClinicSwitcher compact /></div></header>
-    <main className="mx-auto max-w-7xl px-5 py-7 sm:px-8 sm:py-9">
-      <div className="flex flex-wrap items-center justify-between gap-3"><div className="flex items-center gap-2 text-sm font-semibold text-[#6957e8]"><span className="size-2 rounded-full bg-[#6957e8]" />골드만 비뇨의학과 <span className="font-normal text-[#96909e]">/ 대표 홈페이지</span></div><SourceLink label="www.gold-man.com" url="https://www.gold-man.com/" /></div>
-      <nav aria-label="골드만 진단 메뉴" className="my-6 flex gap-1 overflow-x-auto border-b border-[#e1dce9]">{tabs.map(tab=><button key={tab.id} type="button" aria-current={view===tab.id?'page':undefined} onClick={()=>setView(tab.id)} className={`flex shrink-0 items-center gap-2 border-b-2 px-4 py-3 text-sm font-semibold transition ${view===tab.id?'border-[#6957e8] text-[#6957e8]':'border-transparent text-[#827b8e] hover:text-[#494050]'}`}><tab.icon className="size-4" />{tab.label}</button>)}</nav>
-      {view==='overview' && <div className="space-y-6">
-        <section className="grid gap-7 rounded-3xl bg-[#292337] p-6 text-white sm:p-9 lg:grid-cols-[1.5fr_1fr]">
-          <div><span className="rounded-full border border-white/15 bg-white/5 px-3 py-1.5 text-xs text-[#d6ccff]">공개 홈페이지 실사 · {audit.checkedDate}</span><h1 className="mt-6 text-3xl font-bold leading-[1.35] tracking-tight sm:text-4xl">답변의 기반은 있습니다.<br /><span className="text-[#c5b7ff]">이제, 정보의 신뢰도를 맞출 차례.</span></h1><p className="mt-4 max-w-xl text-sm leading-7 text-white/70">질문형 의료정보와 진료 안내를 연결하고,<br className="hidden sm:block" /> 페이지마다 다른 병원 정보를 정리하는 것부터 시작하세요.</p><Button className="mt-6 bg-[#c9bbff] text-[#302347] hover:bg-[#ddd3ff]" onClick={()=>setView('report')}>진단 결과 자세히 보기 <ArrowRight className="size-4" /></Button></div>
-          <div className="self-center rounded-2xl border border-white/15 bg-white/5 p-5"><div className="text-xs font-semibold text-[#c5b7ff]">이번 진단에서 확인한 범위</div><div className="mt-5 space-y-4">{[['7개','대표·의료진·진료·의료정보 페이지'],['3개','robots.txt와 두 사이트맵'],['5개','대표 사이트에 안내된 지점']].map(([number,label])=><div key={label} className="flex items-center gap-4"><strong className="w-12 text-2xl tabular-nums">{number}</strong><span className="text-sm text-white/70">{label}</span></div>)}</div><p className="mt-5 border-t border-white/10 pt-4 text-xs leading-5 text-white/50">특정 지점의 성과가 아닌 대표 도메인의 표본 진단입니다. 전체 URL을 검사한 결과는 아닙니다.</p></div>
-        </section>
-        <div className="grid gap-4 md:grid-cols-3">{[{title:'검색 수집의 기본 구성',value:'7 / 7',note:'표본 페이지의 정상 응답·설명·대표 URL·구조화 데이터 확인',icon:CheckCircle2,color:'text-[#26805f]'},{title:'먼저 정리할 핵심 항목',value:'2가지',note:'의료진 수 표기 · 수술 설명의 일관성',icon:TriangleAlert,color:'text-[#af7126]'},{title:'서치콘솔 분석 준비',value:'CSV 대기',note:'등록은 사용자 확인 · 계정 직접 연결은 미지원',icon:Search,color:'text-[#6957e8]'}].map(card=><section key={card.title} className={panel}><div className={`flex items-center gap-2 text-sm font-semibold ${card.color}`}><card.icon className="size-4" />{card.title}</div><div className="my-3 text-3xl font-bold">{card.value}</div><p className="text-sm leading-6 text-[#777381]">{card.note}</p></section>)}</div>
-        <div className="grid gap-5 lg:grid-cols-[1.45fr_1fr]"><section className={panel}><div className="flex items-center justify-between gap-3"><h2 className="text-xl font-bold">바로 실행할 개선 순서</h2><span className="text-xs text-[#9991a5]">근거 기반 제안</span></div><div className="mt-5 divide-y divide-[#eeeaf3]">{goldmanFindings.slice(0,3).map((finding,index)=><div key={finding.id} className="flex gap-4 py-4 first:pt-0"><span className="mt-0.5 grid size-8 shrink-0 place-items-center rounded-lg bg-[#f1edfc] text-sm font-bold text-[#6957e8]">{index+1}</span><div><h3 className="font-semibold">{finding.title}</h3><p className="mt-2 text-sm leading-6 text-[#777381]">{finding.observation}</p><div className="mt-3 flex flex-wrap gap-3">{finding.sources.map(source=><SourceLink key={source.url} {...source} />)}</div></div></div>)}</div></section><section className={`${panel} flex flex-col`}><Layers3 className="size-7 text-[#6957e8]" /><h2 className="mt-4 text-xl font-bold">이미 있는 콘텐츠부터<br />다음 답변으로 연결하세요</h2><p className="mt-3 text-sm leading-7 text-[#777381]">의료정보 홈에 치료 선택, 회복, 증상에 관한 문서가 있습니다. 첫 답변과 의료진 확인일을 점검한 뒤 관련 진료·예약 안내로 연결하는 방식으로 활용합니다.</p><div className="my-5 space-y-2">{goldmanQuestions.slice(0,2).map(q=><div key={q.path} className="rounded-xl bg-[#f6f3fc] px-4 py-3 text-sm leading-6 text-[#65567f]">{q.question}</div>)}</div><Button variant="outline" className="mt-auto" onClick={()=>setView('questions')}>환자 질문 활용안 보기 <ArrowRight className="size-4" /></Button></section></div>
-        <section className="flex flex-col gap-4 rounded-2xl border border-[#dcd5f4] bg-[#f0ecfb] p-6 sm:flex-row sm:items-center sm:justify-between"><div><h2 className="font-bold text-[#554279]">다음 단계는 실제 검색 데이터입니다</h2><p className="mt-1 text-sm leading-6 text-[#796b90]">골드만 서치콘솔 CSV를 가져오면 어떤 질문부터 개선할지 판단할 수 있습니다.</p></div><Button className="shrink-0 bg-[#6957e8] hover:bg-[#5845d5]" onClick={()=>setView('search')}>서치콘솔 분석 시작 <ArrowRight className="size-4" /></Button></section>
-      </div>}
+  const [searchReport, setSearchReport] = useState<SearchImport | null>(null);
+  const [searchLoading, setSearchLoading] = useState(true);
+  const [searchError, setSearchError] = useState('');
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch('/api/search-console-imports?clinicId=goldman-clinic', { signal: controller.signal })
+      .then(async response => {
+        const data = await response.json() as { report: SearchImport | null; error?: string };
+        if (!response.ok) throw new Error(data.error || '검색 자료를 불러오지 못했습니다.');
+        if (!controller.signal.aborted) { setSearchReport(data.report); setSearchError(''); }
+      })
+      .catch(error => { if (!controller.signal.aborted) setSearchError(error instanceof Error ? error.message : '검색 자료를 불러오지 못했습니다.'); })
+      .finally(() => { if (!controller.signal.aborted) setSearchLoading(false); });
+    return () => controller.abort();
+  }, [view]);
+  const importStatus = searchLoading ? '검색 자료 확인 중' : searchError ? '검색 자료 확인 필요' : searchReport ? '서치콘솔 자료 저장됨' : '서치콘솔 자료 없음';
+  return <WorkspaceShell<View>
+    active={view} onSelect={setView} workflowItems={tabs}
+    hospitalItems={[{ id: 'knowledge', label: '병원 지식 베이스', icon: Database }, { id: 'settings', label: '연동 및 설정', icon: Settings }]}
+    status={`${importStatus} · AI 답변 미측정`}
+    onHelp={() => setView('settings')} onAlerts={() => setView('report')}
+    sidebarFooter={<><div className="mb-3 flex items-center gap-2"><ShieldCheck className="size-4 text-[#b9adff]" /><span className="text-xs font-semibold">진단 범위를 확인하세요</span></div><div className="text-lg font-bold">공개 페이지 7개</div><p className="mt-2 text-xs leading-5 text-white/60">표본 진단과 실제 검색 자료를 구분합니다. AI 언급·인용률은 아직 측정하지 않았습니다.</p></>}
+  >
+      {view === 'overview' && <GoldmanDashboard report={searchReport} loading={searchLoading} error={searchError} onSearch={() => setView('search')} onReport={() => setView('report')} onQuestions={() => setView('questions')} />}
+      {view === 'knowledge' && <section className="space-y-6"><div><div className="mb-1 text-xs font-semibold text-[#7160dc]">골드만 공식 홈페이지 · {audit.checkedDate}</div><h1 className="text-[30px] font-bold tracking-[-.035em]">병원 지식 베이스</h1><p className="mt-2 text-sm leading-6 text-[#777381]">진단에 사용한 공개 페이지와 수집 설정 파일입니다. 최신 정보와 의료 표현은 병원 담당자가 확인해야 합니다.</p></div><div className="grid gap-4 md:grid-cols-2">{[...audit.pages, ...audit.resources].map(source => <article className={panel} key={source.url}><div className="mb-3 flex items-center justify-between gap-3"><h2 className="font-semibold">{source.name}</h2><span className="shrink-0 rounded-full bg-[#e8f7f1] px-2.5 py-1 text-xs text-[#218462]">HTTP {source.status}</span></div><SourceLink label={source.url} url={source.url} /></article>)}</div></section>}
+      {view === 'settings' && <section className="space-y-6"><div><div className="mb-1 text-xs font-semibold text-[#7160dc]">골드만 데이터 연결</div><h1 className="text-[30px] font-bold tracking-[-.035em]">연동 및 설정</h1><p className="mt-2 text-sm leading-6 text-[#777381]">현재 연결 상태와 다음에 확보할 자료를 확인합니다.</p></div><div className="grid gap-5 lg:grid-cols-2"><article className={panel}><Search className="size-6 text-[#6957e8]" /><h2 className="mt-4 text-lg font-bold">Google Search Console</h2><p className="mt-3 font-medium text-[#6957e8]">{importStatus}</p><p className="mt-2 text-sm leading-6 text-[#777381]">사용자가 가져온 CSV로 검색 지표를 계산합니다. Google 계정을 직접 연결하거나 실적을 자동 갱신하지 않습니다.</p>{searchError && <p role="alert" className="mt-3 text-sm text-[#a73848]">{searchError}</p>}<Button className="mt-5 bg-[#6957e8] hover:bg-[#5845d5]" onClick={() => setView('search')}>서치콘솔 자료 관리<ArrowRight className="size-4" /></Button></article><article className={panel}><Activity className="size-6 text-[#6957e8]" /><h2 className="mt-4 text-lg font-bold">AI 답변 · 추천 방문</h2><p className="mt-3 font-medium text-[#777381]">아직 연결하지 않았습니다</p><p className="mt-2 text-sm leading-6 text-[#777381]">AI 답변의 언급·인용은 응답 원문을 수집한 뒤 측정해야 합니다. 추천 방문과 예약 효과는 별도의 방문·전환 자료가 필요합니다.</p><div className="mt-5 rounded-xl bg-[#f7f4ff] p-4 text-sm leading-6 text-[#736485]">서치콘솔 CSV만으로 AI 인용률이나 예약 증가를 계산하지 않습니다.</div></article></div></section>}
       {view==='questions' && <section className="space-y-6"><div><h1 className="text-2xl font-bold">환자의 질문을 기존 정보와 연결합니다</h1><p className="mt-3 text-sm leading-6 text-[#777381]">의료정보 홈에서 확인한 링크를 바탕으로 만든 기획 제안입니다. 실제 검색량이나 AI 추천 횟수로 선정한 순위는 아닙니다.</p></div><div className="grid gap-5 lg:grid-cols-[1fr_1.1fr]"><div className="space-y-3">{goldmanQuestions.map((question,index)=><button key={question.path} onClick={()=>setSelectedQuestion(index)} aria-pressed={index===selectedQuestion} className={`w-full rounded-xl border bg-white p-5 text-left ${index===selectedQuestion?'border-[#8e7adf] ring-2 ring-[#ebe5ff]':'border-[#e5e1ef]'}`}><span className="text-xs font-semibold text-[#6957e8]">{question.intent}</span><div className="mt-2 font-semibold leading-6">{question.question}</div></button>)}</div><div className={`${panel} self-start`}><span className="text-xs font-semibold text-[#6957e8]">콘텐츠 개선 브리프 · 의료진 검토 전</span><h2 className="mt-3 text-xl font-bold leading-8">{goldmanQuestions[selectedQuestion].question}</h2><p className="my-4 text-sm leading-7 text-[#777381]">{goldmanQuestions[selectedQuestion].action}</p><SourceLink label="기존 관련 페이지 열기" url={`https://www.gold-man.com${goldmanQuestions[selectedQuestion].path}`} /><ol className="mt-6 list-decimal space-y-4 border-t pt-5 pl-5 text-sm leading-6 text-[#625a70]"><li>첫 문단에 질문의 직접적인 답변을 작성합니다. 치료 내용은 담당 의료진이 확인합니다.</li><li>적용 대상·예외·개인차를 나누고, 작성자·검토일·참고 근거를 표시합니다.</li><li>관련 진료 설명과 지점 안내로 연결하고, 변경한 URL과 날짜를 기록합니다.</li><li>같은 조건의 서치콘솔 기간을 비교해 클릭·노출 변화를 확인합니다.</li></ol><Button className="mt-6 bg-[#6957e8] hover:bg-[#5845d5]" onClick={()=>setView('plan')}>질문 목록으로 발행 계획 세우기 <ArrowRight className="size-4" /></Button><p className="mt-3 text-xs leading-5 text-[#948ba0]">자동으로 의료 원고를 작성하거나 게시하는 기능은 아닙니다.</p></div></div></section>}
-      {view==='search' && <SearchConsolePanel key="goldman-clinic" clinicId="goldman-clinic" />}
+      {view==='search' && <SearchConsolePanel key="goldman-clinic" clinicId="goldman-clinic" onSaved={report => { setSearchReport(report); setSearchError(''); setSearchLoading(false); }} />}
       {view==='plan' && <section><h1 className="mb-3 text-2xl font-bold">골드만 콘텐츠 발행 계획</h1><p className="mb-6 text-sm leading-6 text-[#777381]">공개 사이트에서 도출한 질문 5개로 시작합니다. 골드만 일정은 위드유 일정과 별도로 저장됩니다.</p><PublishingScheduler key="goldman-clinic" clinicId="goldman-clinic" onOpenSettings={()=>setView('search')} /></section>}
       {view==='report' && <section className="space-y-6"><div className="flex flex-wrap items-start justify-between gap-4"><div><span className="text-sm font-semibold text-[#6957e8]">{audit.checkedDate} · 공개 홈페이지 진단</span><h1 className="mt-2 text-2xl font-bold">골드만 AEO 진단 보고서</h1><p className="mt-2 text-sm leading-6 text-[#777381]">{audit.scope}</p></div><Button onClick={downloadReport} variant="outline"><FileDown className="size-4" />보고서 내려받기 (.md)</Button></div><div className="rounded-2xl border border-[#d8eadf] bg-[#f1f8f4] p-6"><div className="flex items-center gap-2 font-bold text-[#267356]"><ShieldCheck className="size-5" />이미 갖춘 기반</div><p className="mt-3 text-sm leading-7 text-[#537064]">확인한 HTML 7개 모두 정상 응답(HTTP 200), 설명 메타 태그, 대표 URL(canonical), 구조화 데이터(JSON-LD)가 있습니다. 응답에서 noindex 지시도 발견되지 않았습니다. 이는 표본의 구성 확인이며 구조화 데이터 검증이나 실제 검색 색인 확인을 의미하지 않습니다.</p></div><div className="grid gap-5 lg:grid-cols-2">{goldmanFindings.map((finding,index)=><article className={panel} key={finding.id}><span className="rounded-full bg-[#f1edfc] px-3 py-1.5 text-xs font-semibold text-[#6957e8]">{String(index+1).padStart(2,'0')} · {finding.priority}</span><h2 className="mt-4 text-lg font-bold leading-7">{finding.title}</h2><p className="mt-3 text-sm leading-7 text-[#70667e]">{finding.observation}</p><p className="mt-3 text-sm leading-6 text-[#928799]">{finding.implication}</p><div className="mt-4 rounded-xl bg-[#f8f6fb] p-4 text-sm leading-7"><strong className="block text-[#625175]">권장 실행</strong>{finding.action}</div><div className="mt-3 text-xs text-[#948a9e]">담당: {finding.owner}</div><div className="mt-4 flex flex-wrap gap-3">{finding.sources.map(source=><SourceLink key={source.url} {...source} />)}</div></article>)}</div><section className={panel}><h2 className="text-lg font-bold">확인한 URL과 관찰값</h2><div className="mt-4 overflow-auto"><table className="w-full min-w-[610px] text-left text-sm"><thead className="text-xs text-[#8d8199]"><tr><th className="py-3">페이지</th><th>응답</th><th>설명</th><th>대표 URL</th><th>구조화 데이터</th></tr></thead><tbody>{audit.pages.map(page=><tr className="border-t" key={page.url}><td className="py-3"><SourceLink label={page.name} url={page.url} /></td><td>{page.status}</td><td>있음</td><td>있음</td><td>{page.structuredDataBlocks}개 블록</td></tr>)}</tbody></table></div><div className="mt-4 flex flex-wrap gap-4 border-t pt-4">{audit.resources.map(source=><SourceLink key={source.url} label={source.name} url={source.url} />)}</div></section><div className="rounded-xl bg-[#eeeaf5] p-5 text-sm leading-7 text-[#796c88]">이 보고서는 수동 표본 진단입니다. 전체 사이트 크롤링, Google 계정 확인, URL 검사, AI 답변 인용률 측정은 수행하지 않았습니다. 점수나 성과 향상률을 임의로 산정하지 않았으며, 공개 페이지의 정보는 이후 변경될 수 있습니다.</div></section>}
       <footer className="mt-8 flex flex-wrap justify-between gap-3 border-t border-[#e5dfec] pt-5 text-xs leading-5 text-[#948a9f]"><span>위드유와 골드만의 자료·일정·검색 분석은 각각 보관됩니다.</span><span>공개 홈페이지 진단일 {audit.checkedDate}</span></footer>
-    </main>
-  </div>;
+  </WorkspaceShell>;
 }

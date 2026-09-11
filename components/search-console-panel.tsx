@@ -7,7 +7,13 @@ import { Input } from '@/components/ui/input';
 import { clinics, type ClinicId, validDate } from '@/lib/clinics';
 import { maxCsvBytes, parseSearchCsv, searchMetrics, type SearchData, type SearchImport } from '@/lib/search-console';
 
-export function SearchConsolePanel({ clinicId }: { clinicId: ClinicId }) {
+type SearchConsolePanelProps = { clinicId: ClinicId; onSaved?: (report: SearchImport) => void };
+
+export function SearchConsolePanel(props: SearchConsolePanelProps) {
+  return <SearchConsolePanelContent key={props.clinicId} {...props} />;
+}
+
+function SearchConsolePanelContent({ clinicId, onSaved }: SearchConsolePanelProps) {
   const clinic = clinics[clinicId];
   const [saved, setSaved] = useState<SearchImport | null>(null);
   const [draft, setDraft] = useState<{ csv: string; filename: string; data: SearchData } | null>(null);
@@ -21,7 +27,6 @@ export function SearchConsolePanel({ clinicId }: { clinicId: ClinicId }) {
   const [notice, setNotice] = useState('');
   useEffect(() => {
     const controller = new AbortController();
-    setLoading(true); setSaved(null); setError('');
     fetch(`/api/search-console-imports?clinicId=${clinicId}`, { signal: controller.signal })
       .then(async response => { const data = await response.json() as { report: SearchImport | null; error?: string }; if (!response.ok) throw new Error(data.error); if (!controller.signal.aborted) setSaved(data.report); })
       .catch(error => { if (!controller.signal.aborted) setError(error instanceof Error ? error.message : '자료를 불러오지 못했습니다.'); })
@@ -53,7 +58,7 @@ export function SearchConsolePanel({ clinicId }: { clinicId: ClinicId }) {
     try {
       const response = await fetch('/api/search-console-imports', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ clinicId, propertyUrl: clinic.url, propertyConfirmed: confirmed, startDate, endDate, csv: draft.csv, filename: draft.filename }) });
       const data = await response.json() as { report: SearchImport | null; error?: string }; if (!response.ok) throw new Error(data.error);
-      setSaved(data.report); setDraft(null); setConfirmed(false); setNotice(`${clinic.name}의 검색 분석을 저장했습니다.`);
+      setSaved(data.report); if (data.report) onSaved?.(data.report); setDraft(null); setConfirmed(false); setNotice(`${clinic.name}의 검색 분석을 저장했습니다.`);
     } catch (error) { setError(error instanceof Error ? error.message : '분석을 저장하지 못했습니다.'); }
     finally { setSaving(false); }
   }
@@ -70,15 +75,15 @@ export function SearchConsolePanel({ clinicId }: { clinicId: ClinicId }) {
         <label htmlFor={`gsc-file-${clinicId}`} className="flex items-center gap-2 font-bold"><FileUp className="size-5 text-[#6957e8]" /> CSV 가져오기</label>
         <Input id={`gsc-file-${clinicId}`} type="file" accept=".csv,text/csv" disabled={saving || reading} className="mt-4 h-auto py-3 text-sm" onChange={event => { void pickFile(event.target.files?.[0]); event.target.value = ''; }} />
         <p className="mt-2 text-xs text-[#777381]">최대 1MB · 1,000행 · 한국어/영어 열 이름 지원</p>
-        <div className="mt-4 grid grid-cols-2 gap-3"><label className="text-sm">조회 시작일<Input aria-label="조회 시작일" type="date" value={startDate} max={endDate || undefined} onChange={event => setStartDate(event.target.value)} className="mt-2" /></label><label className="text-sm">조회 종료일<Input aria-label="조회 종료일" type="date" value={endDate} min={startDate || undefined} max={new Date().toISOString().slice(0, 10)} onChange={event => setEndDate(event.target.value)} className="mt-2" /></label></div>
+        <div className="mt-4 grid grid-cols-2 gap-3"><label htmlFor={`gsc-start-${clinicId}`} className="text-sm">조회 시작일<Input id={`gsc-start-${clinicId}`} aria-label="조회 시작일" type="date" value={startDate} max={endDate || undefined} onChange={event => setStartDate(event.target.value)} className="mt-2" /></label><label htmlFor={`gsc-end-${clinicId}`} className="text-sm">조회 종료일<Input id={`gsc-end-${clinicId}`} aria-label="조회 종료일" type="date" value={endDate} min={startDate || undefined} max={new Date().toISOString().slice(0, 10)} onChange={event => setEndDate(event.target.value)} className="mt-2" /></label></div>
         <p className="mt-2 text-xs leading-5 text-[#777381]">파일을 내려받을 때 서치콘솔에 표시된 기간을 입력하세요.</p>
         <label className="mt-4 flex items-start gap-2 text-sm leading-5"><input type="checkbox" checked={confirmed} onChange={event => setConfirmed(event.target.checked)} className="mt-1 accent-[#6957e8]" />선택한 파일이 {clinic.name}의 위 기간 검색 자료임을 확인했습니다.</label>
         <div className="mt-4 flex flex-wrap gap-2"><Button disabled={!canSave || saving || reading} onClick={save} className="bg-[#6957e8] hover:bg-[#5845d5]">{saving ? <Loader2 className="size-4 animate-spin" /> : <CheckCircle2 className="size-4" />}분석 저장</Button>{draft && <Button variant="outline" disabled={saving} onClick={() => { setDraft(null); setError(''); }}>미리보기 닫기</Button>}</div>
       </div>
     </div>
     {error && <p role="alert" className="rounded-xl bg-[#fff0f1] p-4 text-sm text-[#a73848]">{error}</p>}
-    {notice && <p role="status" className="rounded-xl bg-[#eaf7f1] p-4 text-sm text-[#257452]">{notice}</p>}
-    {loading || reading ? <p role="status" className="flex items-center gap-2 py-6 text-sm text-[#777381]"><Loader2 className="size-4 animate-spin" />{reading ? '파일을 분석하고 있습니다.' : '저장된 자료를 확인하고 있습니다.'}</p> : displayed ? <div className="space-y-4">
+    {notice && <output className="block rounded-xl bg-[#eaf7f1] p-4 text-sm text-[#257452]">{notice}</output>}
+    {loading || reading ? <output className="flex items-center gap-2 py-6 text-sm text-[#777381]"><Loader2 className="size-4 animate-spin" />{reading ? '파일을 분석하고 있습니다.' : '저장된 자료를 확인하고 있습니다.'}</output> : displayed ? <div className="space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-3"><div><h3 className="text-lg font-bold">{draft ? '가져온 파일 미리보기 · 아직 저장 전' : '저장된 검색 분석'}</h3><p className="mt-1 break-all text-sm text-[#777381]">{draft?.filename ?? saved?.filename} · {displayed.rows.length.toLocaleString()}행{!draft && saved ? ` · ${saved.startDate} ~ ${saved.endDate}` : ''}</p></div><span className="rounded-full bg-[#ede9fc] px-3 py-1.5 text-xs font-semibold text-[#6957e8]">사용자 제공 CSV</span></div>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">{[['클릭수',metrics.clicks.toLocaleString()],['노출수',metrics.impressions.toLocaleString()],['클릭률',`${metrics.ctr.toFixed(2)}%`],['평균 순위 (가중 추정)',metrics.position?.toFixed(1) ?? '—']].map(([label,value]) => <div className="rounded-xl border bg-white p-5" key={label}><div className="text-xs text-[#777381]">{label}</div><div className="mt-2 text-2xl font-bold tabular-nums">{value}</div></div>)}</div>
       <p className="text-xs leading-5 text-[#777381]">가져온 행만 합산한 값입니다. 검색어·페이지 단위 집계와 익명 처리된 검색어 때문에 서치콘솔 전체 합계와 다를 수 있습니다. 평균 순위는 노출수로 가중한 추정값입니다. AI 답변 인용률은 이 파일로 측정하지 않습니다. <a href="https://support.google.com/webmasters/answer/7576553?hl=ko" target="_blank" rel="noreferrer" className="underline">Google 집계 안내</a></p>

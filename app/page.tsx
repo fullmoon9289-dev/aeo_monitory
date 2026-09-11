@@ -5,12 +5,10 @@ import {
   Activity,
   ArrowRight,
   BarChart3,
-  Bell,
   Bot,
   CalendarDays,
   Check,
   CheckCircle2,
-  ChevronDown,
   CircleHelp,
   Clock3,
   Database,
@@ -24,7 +22,6 @@ import {
   Link2,
   LockKeyhole,
   Map,
-  Menu,
   MessageCircleQuestion,
   MousePointerClick,
   Quote,
@@ -62,7 +59,8 @@ import {
 import { DiagnosticReport } from '@/components/diagnostic-report';
 import { PublishingScheduler } from '@/components/publishing-scheduler';
 import clinicData from '@/data/withyou-clinic.json';
-import { ClinicWorkspace, ClinicSwitcher } from '@/components/clinic-workspace';
+import { ClinicWorkspace } from '@/components/clinic-workspace';
+import { WorkspaceShell } from '@/components/workspace-shell';
 import { SearchConsolePanel } from '@/components/search-console-panel';
 
 type View =
@@ -184,13 +182,11 @@ function WithyouWorkspace() {
   const [active, setActive] = useState<View>('performance');
   const [question, setQuestion] = useState(opportunities[0].question);
   const [briefReady, setBriefReady] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
 
   const openBrief = (nextQuestion: string) => {
     setQuestion(nextQuestion);
     setBriefReady(true);
     setActive('studio');
-    setMobileOpen(false);
   };
 
   useEffect(() => {
@@ -241,19 +237,24 @@ function WithyouWorkspace() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#f7f7fa] text-[#20202a]">
-      <Sidebar
-        active={active}
-        open={mobileOpen}
-        onClose={() => setMobileOpen(false)}
-        onSelect={(view) => {
-          setActive(view);
-          setMobileOpen(false);
-        }}
-      />
-      <div className="lg:pl-[248px]">
-        <Topbar onMenu={() => setMobileOpen(true)} />
-        <main className="mx-auto max-w-[1510px] px-5 py-7 sm:px-7 lg:px-9 lg:py-8">
+    <WorkspaceShell<View>
+      active={active}
+      onSelect={setActive}
+      workflowItems={navItems}
+      hospitalItems={[
+        { id: 'knowledge', label: '병원 지식 베이스', icon: Database, badge: facts.length },
+        { id: 'settings', label: '연동 및 설정', icon: Settings },
+      ]}
+      status="공식 홈페이지 정보 확인 · AI 성과는 예시"
+      onHelp={() => setActive('settings')}
+      onAlerts={() => setActive('knowledge')}
+      sidebarFooter={<>
+        <div className="mb-3 flex items-center justify-between"><ShieldCheck className="size-4 text-[#b9adff]" /><Badge className="bg-[#3d394d] text-[9px] text-white">SAFETY FIRST</Badge></div>
+        <div className="text-xs font-semibold">위험 주장 자동 차단</div>
+        <div className="mt-2 flex items-baseline gap-1.5"><span className="text-2xl font-bold">{counts.blocked_claim}</span><span className="text-[10px] text-white/55">개 표현</span></div>
+        <div className="mt-2 text-[10px] leading-4 text-white/60">의료진 승인 전 콘텐츠에 사용하지 않습니다.</div>
+      </>}
+    >
           {active === 'command' && (
             <CommandCenter onNavigate={setActive} onBrief={openBrief} />
           )}
@@ -280,185 +281,7 @@ function WithyouWorkspace() {
           {active === 'search-console' && <SearchConsolePanel key="withyou-clinic" clinicId="withyou-clinic" />}
           {active === 'knowledge' && <KnowledgeView />}
           {active === 'settings' && <SettingsView />}
-        </main>
-      </div>
-    </div>
-  );
-}
-
-function Sidebar({
-  active,
-  open,
-  onClose,
-  onSelect,
-}: {
-  active: View;
-  open: boolean;
-  onClose: () => void;
-  onSelect: (view: View) => void;
-}) {
-  return (
-    <>
-      {open ? (
-        <button
-          aria-label="메뉴 닫기"
-          className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm lg:hidden"
-          onClick={onClose}
-        />
-      ) : null}
-      <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-[248px] flex-col border-r border-[#e8e7ee] bg-white transition-transform lg:translate-x-0 ${open ? 'translate-x-0' : '-translate-x-full'}`}
-      >
-        <div className="flex h-[72px] items-center gap-3 border-b border-[#efedf4] px-6">
-          <div className="grid size-9 place-items-center rounded-xl bg-[#6957e8] text-white shadow-[0_6px_18px_rgba(105,87,232,.28)]">
-            <Activity className="size-[19px]" strokeWidth={2.4} />
-          </div>
-          <div className="flex-1">
-            <div className="text-[15px] font-bold tracking-[-.02em]">
-              MediAnswer
-            </div>
-            <div className="text-[9px] font-bold tracking-[.12em] text-[#94909f]">
-              HOSPITAL AEO OS
-            </div>
-          </div>
-          <button
-            className="lg:hidden"
-            onClick={onClose}
-            aria-label="메뉴 닫기"
-          >
-            <X className="size-4" />
-          </button>
-        </div>
-
-        <div className="p-4">
-          <ClinicSwitcher />
-        </div>
-
-        <nav
-          className="flex-1 overflow-y-auto px-3 py-2"
-          aria-label="주요 메뉴"
-        >
-          <div className="mb-2 px-3 text-[10px] font-semibold tracking-[.1em] text-[#a6a2af]">
-            AEO WORKFLOW
-          </div>
-          <div className="space-y-1">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <button
-                  key={item.id}
-                  onClick={() => onSelect(item.id)}
-                  className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${active === item.id ? 'bg-[#f0edff] text-[#5946d4]' : 'text-[#666371] hover:bg-[#f7f6fa] hover:text-[#2f2d38]'}`}
-                >
-                  <Icon className="size-[17px]" />
-                  <span className="flex-1 text-left">{item.label}</span>
-                  {item.badge ? (
-                    <span className="rounded-full bg-[#6957e8] px-1.5 py-0.5 text-[10px] font-bold text-white">
-                      {item.badge}
-                    </span>
-                  ) : null}
-                </button>
-              );
-            })}
-          </div>
-
-          <div className="mb-2 mt-7 px-3 text-[10px] font-semibold tracking-[.1em] text-[#a6a2af]">
-            HOSPITAL
-          </div>
-          <SideButton
-            active={active === 'knowledge'}
-            icon={Database}
-            label="병원 지식 베이스"
-            suffix={String(facts.length)}
-            onClick={() => onSelect('knowledge')}
-          />
-          <SideButton
-            active={active === 'settings'}
-            icon={Settings}
-            label="연동 및 설정"
-            onClick={() => onSelect('settings')}
-          />
-        </nav>
-
-        <div className="m-4 rounded-2xl bg-[#252331] p-4 text-white">
-          <div className="mb-3 flex items-center justify-between">
-            <ShieldCheck className="size-4 text-[#b9adff]" />
-            <Badge className="bg-[#3d394d] text-[9px] text-white">
-              SAFETY FIRST
-            </Badge>
-          </div>
-          <div className="text-xs font-semibold">위험 주장 자동 차단</div>
-          <div className="mt-2 flex items-baseline gap-1.5">
-            <span className="text-2xl font-bold">{counts.blocked_claim}</span>
-            <span className="text-[10px] text-white/55">개 표현</span>
-          </div>
-          <div className="mt-2 text-[10px] leading-4 text-white/60">
-            의료진 승인 전 콘텐츠에 사용하지 않습니다.
-          </div>
-        </div>
-      </aside>
-    </>
-  );
-}
-
-function SideButton({
-  active,
-  icon: Icon,
-  label,
-  suffix,
-  onClick,
-}: {
-  active: boolean;
-  icon: typeof Activity;
-  label: string;
-  suffix?: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${active ? 'bg-[#f0edff] text-[#5946d4]' : 'text-[#666371] hover:bg-[#f7f6fa]'}`}
-    >
-      <Icon className="size-[17px]" />
-      <span className="flex-1 text-left">{label}</span>
-      {suffix ? <span className="text-[10px] font-bold">{suffix}</span> : null}
-    </button>
-  );
-}
-
-function Topbar({ onMenu }: { onMenu: () => void }) {
-  return (
-    <header className="sticky top-0 z-30 flex h-[72px] items-center border-b border-[#e8e7ee] bg-white/90 px-5 backdrop-blur-xl sm:px-7 lg:px-9">
-      <button
-        onClick={onMenu}
-        className="mr-3 rounded-lg p-2 lg:hidden"
-        aria-label="메뉴 열기"
-      >
-        <Menu className="size-5" />
-      </button>
-      <div className="hidden items-center gap-2 text-xs text-[#777381] sm:flex">
-        <span className="size-2 rounded-full bg-[#2cad77] shadow-[0_0_0_4px_#e5f7ef]" />
-        <span>공식 홈페이지 연결됨</span>
-        <span className="text-[#c4c1ca]">·</span>
-        <span>외부 데이터 연결 전</span>
-      </div>
-      <div className="ml-auto flex items-center gap-2">
-        <Button variant="ghost" size="icon" aria-label="도움말">
-          <CircleHelp className="size-[18px] text-[#777381]" />
-        </Button>
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label="검수 알림"
-          className="relative"
-        >
-          <Bell className="size-[18px] text-[#777381]" />
-          <span className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-[#f05d62] ring-2 ring-white" />
-        </Button>
-        <div className="mx-1 h-6 w-px bg-[#e9e7ef]" />
-        <ClinicSwitcher compact />
-      </div>
-    </header>
+    </WorkspaceShell>
   );
 }
 
