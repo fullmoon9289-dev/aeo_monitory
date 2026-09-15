@@ -58,7 +58,9 @@ function SearchConsolePanelContent({ clinicId, onSaved }: SearchConsolePanelProp
     try {
       const response = await fetch('/api/search-console-imports', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ clinicId, propertyUrl: clinic.url, propertyConfirmed: confirmed, startDate, endDate, csv: draft.csv, filename: draft.filename }) });
       const data = await response.json() as { report: SearchImport | null; error?: string }; if (!response.ok) throw new Error(data.error);
-      setSaved(data.report); if (data.report) onSaved?.(data.report); setDraft(null); setConfirmed(false); setNotice(`${clinic.name}의 검색 분석을 저장했습니다.`);
+      setSaved(data.report); if (data.report) onSaved?.(data.report); setDraft(null); setConfirmed(false);
+      window.dispatchEvent(new CustomEvent('search-data-updated', { detail: { clinicId } }));
+      setNotice(`${clinic.name}의 검색 분석을 저장했습니다.${data.report?.dimension === 'query' ? ' 질문 지도와 성장 기회는 저장된 검색어 중 종료일이 가장 최근인 자료로 자동 갱신됩니다.' : ' 질문 지도는 별도로 저장된 검색어 자료를 사용합니다.'}`);
     } catch (error) { setError(error instanceof Error ? error.message : '분석을 저장하지 못했습니다.'); }
     finally { setSaving(false); }
   }

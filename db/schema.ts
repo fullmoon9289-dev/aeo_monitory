@@ -1,5 +1,25 @@
 import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
+// Site-private pilot: each connection belongs to the dispatcher-authenticated user.
+export const ga4Connections = sqliteTable('ga4_connections', {
+  userId: text('user_id').primaryKey(),
+  id: text('id').notNull(),
+  clinicId: text('clinic_id').notNull(),
+  propertyId: text('property_id').notNull(),
+  encryptedToken: text('encrypted_token').notNull(),
+  timezone: text('timezone').notNull(),
+  connectedAt: text('connected_at').notNull(),
+  lastFetchedAt: text('last_fetched_at'),
+  needsReconnect: integer('needs_reconnect').notNull().default(0),
+});
+export const ga4OauthStates = sqliteTable('ga4_oauth_states', {
+  stateHash: text('state_hash').primaryKey(),
+  userId: text('user_id').notNull(),
+  bindingHash: text('binding_hash').notNull(),
+  encryptedVerifier: text('encrypted_verifier').notNull(),
+  expiresAt: integer('expires_at').notNull(),
+}, table => [index('idx_ga4_states_user').on(table.userId), index('idx_ga4_states_expiry').on(table.expiresAt)]);
+
 export const publishingSchedules = sqliteTable(
   'publishing_schedules',
   {

@@ -1,5 +1,6 @@
 import { getDatabaseBinding } from '@/db';
-import { isClinicId, plannedTopic, validDate, type ClinicId } from '@/lib/clinics';
+import { isClinicId, planTopics, validDate, type ClinicId, type PlannedTopic } from '@/lib/clinics';
+import { readQuestionSet } from '@/lib/question-data';
 
 function addDays(date: string, amount: number) {
   const value = new Date(`${date}T00:00:00Z`);
@@ -11,7 +12,7 @@ async function readSchedule(clinicId: ClinicId) {
   const db = getDatabaseBinding();
   const schedule = await db.prepare(`SELECT id, clinic_id AS clinicId, interval_days AS intervalDays, total_count AS totalCount, start_date AS startDate, publish_time AS publishTime, timezone, status, approved_only AS approvedOnly, created_at AS createdAt, updated_at AS updatedAt FROM publishing_schedules WHERE clinic_id = ? ORDER BY created_at DESC, rowid DESC LIMIT 1`).bind(clinicId).first<{ id: string; approvedOnly: number; [key: string]: unknown }>();
   if (!schedule) return null;
-  const { results: items } = await db.prepare(`SELECT id, sequence, question, title, scheduled_for AS scheduledFor, status FROM publishing_queue_items WHERE schedule_id = ? ORDER BY sequence`).bind(schedule.id).all();
+  const { results: items } = await db.prepare(`SELECT id, sequence, question, title, scheduled_for AS scheduledFor, status FROM publishing_queue_items WHERE schedule_id = ? ORDER BY sequence`).bind(schedule.id).all<PlannedTopic & { id: string; sequence: number; scheduledFor: string }>();
   return { ...schedule, approvedOnly: Boolean(schedule.approvedOnly), items };
 }
 
@@ -36,10 +37,15 @@ export async function POST(request: Request) {
   if (!validDate(startDate) || startDate < today || startDate > '2100-12-31') return Response.json({ error: '첫 발행일은 오늘부터 2100년 사이의 유효한 날짜로 선택해 주세요.' }, { status: 400 });
   if (!/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(publishTime)) return Response.json({ error: '발행 시간을 올바르게 선택해 주세요.' }, { status: 400 });
   const now = new Date().toISOString(), scheduleId = crypto.randomUUID();
-  const items = Array.from({ length: totalCount }, (_, index) => ({
-    id: crypto.randomUUID(), sequence: index + 1, ...plannedTopic(clinicId, index), scheduledFor: `${addDays(startDate, index * intervalDays)}T${publishTime}:00+09:00`,
-  }));
   try {
+    const questionSet = await readQuestionSet(clinicId);
+    const existing = await readSchedule(clinicId);
+    if (input.questionVersion !== questionSet.version || (input.scheduleId ?? null) !== (existing?.id ?? null)) return Response.json({ error: '검색 자료나 저장된 일정이 변경되었습니다. 최신 목록을 다시 확인한 뒤 계획을 저장해 주세요.' }, { status: 409 });
+    const questions = questionSet.source ? questionSet.items.map(item => item.question) : undefined;
+    const topics = planTopics(clinicId, totalCount, questions, existing?.items);
+    const items = topics.map((topic, index) => ({
+      ...topic, id: crypto.randomUUID(), sequence: index + 1, scheduledFor: `${addDays(startDate, index * intervalDays)}T${publishTime}:00+09:00`,
+    }));
     const db = getDatabaseBinding();
     await db.batch([
       db.prepare(`UPDATE publishing_schedules SET status = 'replaced', updated_at = ? WHERE clinic_id = ? AND status IN ('waiting_cms', 'active', 'paused')`).bind(now, clinicId),

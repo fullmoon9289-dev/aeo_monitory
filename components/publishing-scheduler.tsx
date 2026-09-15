@@ -15,7 +15,8 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { plannedTopic, validDate, type ClinicId } from '@/lib/clinics';
+import { planTopics, validDate, type ClinicId } from '@/lib/clinics';
+import { useQuestionSet } from '@/hooks/use-question-set';
 
 type QueueStatus = 'review_required' | 'draft_required' | 'topic_pending';
 
@@ -109,12 +110,14 @@ function makePreviewItems(
   publishTime: string,
   intervalDays: number,
   totalCount: number,
+  questions?: string[],
+  existing: QueueItem[] = [],
 ): QueueItem[] {
   if (!validDate(startDate)) return [];
-  return Array.from({ length: totalCount }, (_, index) => ({
+  return planTopics(clinicId, totalCount, questions, existing).map((topic, index) => ({
     id: `preview-${index}`,
     sequence: index + 1,
-    ...plannedTopic(clinicId, index),
+    ...topic,
     scheduledFor: `${addDays(startDate, index * intervalDays)}T${publishTime}:00+09:00`,
   }));
 }
@@ -126,6 +129,8 @@ export function PublishingScheduler({
   clinicId?: ClinicId;
   onOpenSettings: () => void;
 }) {
+  const questionData = useQuestionSet(clinicId);
+  const suggestedQuestions = useMemo(() => questionData.questionSet?.source ? questionData.questionSet.items.map(item => item.question) : undefined, [questionData.questionSet]);
   const [intervalDays, setIntervalDays] = useState(1);
   const [totalCount, setTotalCount] = useState(7);
   const [startDate, setStartDate] = useState(() => koreaDate(1));
@@ -174,8 +179,8 @@ export function PublishingScheduler({
   }, [clinicId]);
 
   const previewItems = useMemo(
-    () => makePreviewItems(clinicId, startDate, publishTime, intervalDays, totalCount),
-    [clinicId, intervalDays, publishTime, startDate, totalCount],
+    () => makePreviewItems(clinicId, startDate, publishTime, intervalDays, totalCount, suggestedQuestions, schedule?.items),
+    [clinicId, intervalDays, publishTime, startDate, totalCount, suggestedQuestions, schedule],
   );
   const lastDate = previewItems.at(-1)?.scheduledFor.slice(0, 10) ?? '';
   const formMatchesSaved =
@@ -187,6 +192,7 @@ export function PublishingScheduler({
     schedule && formMatchesSaved ? schedule.items : previewItems;
 
   const saveSchedule = async () => {
+    if (questionData.loading || questionData.error || !questionData.questionSet) return;
     setSaving(true);
     setNotice('');
     setError('');
@@ -200,6 +206,8 @@ export function PublishingScheduler({
           totalCount,
           startDate,
           publishTime,
+          questionVersion: questionData.questionSet.version,
+          scheduleId: schedule?.id ?? null,
         }),
       });
       const data = (await response.json()) as {
@@ -207,6 +215,7 @@ export function PublishingScheduler({
         error?: string;
       };
       if (!response.ok || !data.schedule) {
+        if (response.status === 409) window.dispatchEvent(new CustomEvent('search-data-updated', { detail: { clinicId } }));
         throw new Error(data.error ?? '발행 계획을 저장하지 못했습니다.');
       }
       setSchedule(data.schedule);
@@ -384,15 +393,15 @@ export function PublishingScheduler({
               {notice}
             </div>
           ) : null}
-          {error ? (
+          {error || questionData.error ? (
             <div className="mt-3 rounded-xl bg-[#fff1f2] px-3 py-2.5 text-[11px] font-semibold text-[#b74a55]">
-              {error}
+              {error || questionData.error}
             </div>
           ) : null}
 
           <Button
             onClick={saveSchedule}
-            disabled={saving || loading || !validDate(startDate) || !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(publishTime) || formMatchesSaved}
+            disabled={saving || loading || questionData.loading || !!questionData.error || !questionData.questionSet || !validDate(startDate) || !/^(?:[01]\d|2[0-3]):[0-5]\d$/.test(publishTime) || formMatchesSaved}
             className="mt-4 w-full bg-[#6957e8] hover:bg-[#5845d5]"
           >
             {saving ? (
@@ -413,7 +422,7 @@ export function PublishingScheduler({
             <div>
               <h3 className="text-sm font-bold">콘텐츠 대기열</h3>
               <p className="mt-1 text-[10px] text-[#9692a0]">
-                저장한 순서를 기준으로 담당자가 초안 작성과 검수를 진행합니다.
+                선정된 주제는 유지합니다. 계획 변경 시 미선정 칸에 최신 기회 질문을 채웁니다.
               </p>
             </div>
             <Badge variant="outline" className="h-7">
@@ -422,7 +431,7 @@ export function PublishingScheduler({
           </div>
 
           <div className="mt-4 max-h-[520px] overflow-auto rounded-xl border border-[#e8e6ee]">
-            {loading ? (
+            {loading || (!schedule && questionData.loading) ? (
               <div className="grid min-h-48 place-items-center text-xs text-[#8f8b98]">
                 <span className="inline-flex items-center gap-2">
                   <Loader2 className="size-4 animate-spin" /> 저장된 계획 확인

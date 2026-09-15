@@ -18,14 +18,29 @@ export const goldmanQuestions = [
   { question: '골드만은 어느 지점에서 언제 진료하나요?', path: '/support/hours', intent: '방문 준비', action: '지점별 진료시간과 예약 경로를 최신 운영 정보로 확인합니다.' },
 ];
 
-export function plannedTopic(clinicId: ClinicId, index: number) {
-  const question = clinicId === 'withyou-clinic' ? withyou.opportunities[index]?.question : goldmanQuestions[index]?.question;
-  const hasDraft = clinicId === 'withyou-clinic' && index === 0;
+export function plannedTopic(clinicId: ClinicId, index: number, questions?: string[]) {
+  const question = questions ? questions[index] : clinicId === 'withyou-clinic' ? withyou.opportunities[index]?.question : goldmanQuestions[index]?.question;
+  const hasDraft = clinicId === 'withyou-clinic' && question === withyou.contentDraft.question;
   return {
     question: question ?? `추가 주제 선정 필요 #${index + 1}`,
     title: hasDraft ? withyou.contentDraft.h1 : (question?.replace(/\?$/, '') ?? `추가 주제 선정 필요 #${index + 1}`),
     status: hasDraft ? 'review_required' as const : question ? 'draft_required' as const : 'topic_pending' as const,
   };
+}
+
+export type PlannedTopic = ReturnType<typeof plannedTopic>;
+
+export function planTopics(clinicId: ClinicId, count: number, questions?: string[], existing: PlannedTopic[] = []) {
+  const retained = existing.slice(0, count);
+  const used = new Set(retained.filter(item => item.status !== 'topic_pending').map(item => item.question));
+  const candidates = (questions ?? (clinicId === 'withyou-clinic' ? withyou.opportunities : goldmanQuestions).map(item => item.question)).filter(question => !used.has(question));
+  let next = 0;
+  return Array.from({ length: count }, (_, index) => {
+    if (retained[index] && retained[index].status !== 'topic_pending') return retained[index];
+    const question = candidates[next++];
+    const topic = plannedTopic(clinicId, 0, question ? [question] : []);
+    return question ? topic : { ...topic, question: `추가 주제 선정 필요 #${index + 1}`, title: `추가 주제 선정 필요 #${index + 1}` };
+  });
 }
 
 export function validDate(value: string) {

@@ -61,7 +61,12 @@ import { PublishingScheduler } from '@/components/publishing-scheduler';
 import clinicData from '@/data/withyou-clinic.json';
 import { ClinicWorkspace } from '@/components/clinic-workspace';
 import { WorkspaceShell } from '@/components/workspace-shell';
+import { Heading, Metric } from '@/components/dashboard-primitives';
+import { JourneyStrip, JourneyView, OpportunitiesView, Insight } from '@/components/question-views';
+import { workflowNavigation } from '@/lib/workspace-navigation';
 import { SearchConsolePanel } from '@/components/search-console-panel';
+import { useQuestionSet } from '@/hooks/use-question-set';
+import { questionSetDescription, type Opportunity, type QuestionSet } from '@/lib/question-opportunities';
 
 type View =
   | 'search-console'
@@ -130,31 +135,7 @@ const counts = facts.reduce(
   } as Record<FactStatus, number>,
 );
 
-const navItems: {
-  id: View;
-  label: string;
-  icon: typeof Activity;
-  badge?: number;
-}[] = [
-  { id: 'command', label: '온보딩 센터', icon: Activity },
-  { id: 'performance', label: 'AI 노출 성과', icon: BarChart3 },
-  { id: 'journey', label: '환자 질문 지도', icon: Map },
-  {
-    id: 'opportunities',
-    label: '성장 기회',
-    icon: Sparkles,
-    badge: opportunities.length,
-  },
-  { id: 'studio', label: '콘텐츠 스튜디오', icon: FileText },
-  {
-    id: 'monitor',
-    label: '노출 기준선',
-    icon: Bot,
-    badge: publicBaseline.summary.queries,
-  },
-  { id: 'report', label: 'PDF 진단 보고서', icon: FileDown },
-  { id: 'search-console', label: '서치콘솔 분석', icon: Search },
-];
+const navItems = workflowNavigation(opportunities.length, publicBaseline.summary.queries);
 
 declare global {
   interface Document {
@@ -180,6 +161,9 @@ export default function Home() {
 
 function WithyouWorkspace() {
   const [active, setActive] = useState<View>('performance');
+  const questionData = useQuestionSet('withyou-clinic', active);
+  const currentOpportunities: Opportunity[] = questionData.questionSet?.source ? questionData.questionSet.items : opportunities;
+  const questionDescription = questionSetDescription(questionData.questionSet, questionData.loading, questionData.error);
   const [question, setQuestion] = useState(opportunities[0].question);
   const [briefReady, setBriefReady] = useState(false);
 
@@ -240,7 +224,7 @@ function WithyouWorkspace() {
     <WorkspaceShell<View>
       active={active}
       onSelect={setActive}
-      workflowItems={navItems}
+      workflowItems={navItems.map(item => item.id === 'opportunities' ? { ...item, badge: currentOpportunities.length } : item)}
       hospitalItems={[
         { id: 'knowledge', label: '병원 지식 베이스', icon: Database, badge: facts.length },
         { id: 'settings', label: '연동 및 설정', icon: Settings },
@@ -262,10 +246,10 @@ function WithyouWorkspace() {
             <PerformanceView onNavigate={setActive} />
           )}
           {active === 'journey' && (
-            <JourneyView onNavigate={setActive} onBrief={openBrief} />
+            <JourneyView onNavigate={setActive} onBrief={openBrief} items={currentOpportunities} description={questionDescription} questionSet={questionData.questionSet} />
           )}
           {active === 'opportunities' && (
-            <OpportunitiesView onBrief={openBrief} />
+            <OpportunitiesView onBrief={openBrief} items={currentOpportunities} description={questionDescription} questionSet={questionData.questionSet} />
           )}
           {active === 'studio' && (
             <StudioView
@@ -285,68 +269,6 @@ function WithyouWorkspace() {
   );
 }
 
-function Heading({
-  eyebrow,
-  title,
-  description,
-  action,
-}: {
-  eyebrow: string;
-  title: string;
-  description: string;
-  action?: React.ReactNode;
-}) {
-  return (
-    <div className="mb-7 flex flex-col justify-between gap-4 sm:flex-row sm:items-end">
-      <div>
-        <div className="mb-1 text-xs font-semibold text-[#7160dc]">
-          {eyebrow}
-        </div>
-        <h1 className="text-[26px] font-bold tracking-[-.035em] sm:text-[30px]">
-          {title}
-        </h1>
-        <p className="mt-2 max-w-3xl text-sm leading-6 text-[#777381]">
-          {description}
-        </p>
-      </div>
-      {action}
-    </div>
-  );
-}
-
-function Metric({
-  label,
-  value,
-  unit,
-  note,
-  icon: Icon,
-  tone,
-}: {
-  label: string;
-  value: string;
-  unit: string;
-  note: string;
-  icon: typeof Activity;
-  tone: string;
-}) {
-  return (
-    <div className="rounded-2xl border border-[#e8e6ee] bg-white p-5 shadow-[0_2px_10px_rgba(31,28,45,.025)]">
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-medium text-[#7e7a89]">{label}</span>
-        <span className={`grid size-8 place-items-center rounded-lg ${tone}`}>
-          <Icon className="size-4" />
-        </span>
-      </div>
-      <div className="mt-4 flex items-end gap-1.5">
-        <span className="text-[30px] font-bold leading-none tracking-[-.04em]">
-          {value}
-        </span>
-        <span className="mb-0.5 text-xs text-[#9c98a6]">{unit}</span>
-      </div>
-      <div className="mt-3 text-[11px] text-[#777381]">{note}</div>
-    </div>
-  );
-}
 
 function CommandCenter({
   onNavigate,
@@ -596,244 +518,6 @@ function CommandCenter({
   );
 }
 
-function JourneyStrip({ compact = false }: { compact?: boolean }) {
-  return (
-    <div
-      className={`grid gap-2 ${compact ? 'grid-cols-2 sm:grid-cols-5' : 'grid-cols-1 md:grid-cols-5'}`}
-    >
-      {clinicData.journey.map((step, index) => (
-        <div
-          key={step.stage}
-          className="relative rounded-xl border border-[#eceaf1] bg-[#fcfbfd] p-3.5"
-        >
-          <div className="mb-3 flex items-center justify-between">
-            <span className="text-[10px] font-bold text-[#85818f]">
-              {index + 1}. {step.stage}
-            </span>
-            <span className="text-[10px] font-bold text-[#6653df]">
-              {step.readiness}
-            </span>
-          </div>
-          <div className="h-1.5 overflow-hidden rounded-full bg-[#ebe9f0]">
-            <div
-              className="h-full rounded-full bg-[#7562e8]"
-              style={{ width: `${step.readiness}%` }}
-            />
-          </div>
-          {!compact ? (
-            <>
-              <p className="mt-4 min-h-14 text-xs font-semibold leading-5">
-                “{step.question}”
-              </p>
-              <div className="mt-2 flex items-center justify-between text-[10px] text-[#9c98a5]">
-                <span>질문 {step.tracked}개</span>
-                <span>{step.status}</span>
-              </div>
-            </>
-          ) : null}
-          {index < clinicData.journey.length - 1 ? (
-            <ArrowRight className="absolute -right-3 top-1/2 z-10 hidden size-4 -translate-y-1/2 text-[#c8c4d0] md:block" />
-          ) : null}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-function JourneyView({
-  onNavigate,
-  onBrief,
-}: {
-  onNavigate: (view: View) => void;
-  onBrief: (question: string) => void;
-}) {
-  return (
-    <>
-      <Heading
-        eyebrow="Patient Question Journey"
-        title="위드유를 찾기 전 환자가 묻는 질문을 정리했습니다"
-        description="현재 수치는 AI 노출 점수가 아니라 공식 홈페이지가 답변 근거를 얼마나 준비하고 있는지 보여주는 초기 콘텐츠 준비도입니다."
-        action={
-          <Button
-            onClick={() => onNavigate('opportunities')}
-            className="bg-[#6957e8] hover:bg-[#5845d5]"
-          >
-            기회 {opportunities.length}개 보기 <ArrowRight className="size-4" />
-          </Button>
-        }
-      />
-      <div className="mb-5 rounded-2xl border border-[#e8e6ee] bg-white p-5 sm:p-6">
-        <JourneyStrip />
-      </div>
-      <div className="grid gap-5 lg:grid-cols-3">
-        <Insight
-          icon={Target}
-          title="가장 안전한 시작점"
-          value="검사 이해"
-          description="검사 종류와 공식 근거가 준비되어 첫 브리프에 적합합니다."
-          tone="border-[#ded8fb] bg-[#faf9ff] text-[#5d49d2]"
-        />
-        <Insight
-          icon={MessageCircleQuestion}
-          title="먼저 묶을 질문"
-          value="예약 전 확인"
-          description="예약제·야간진료·의료진·검사를 병원 선택 질문으로 연결합니다."
-          tone="border-[#d9e8f7] bg-[#f8fbff] text-[#397ac5]"
-        />
-        <Insight
-          icon={ShieldAlert}
-          title="주의할 구간"
-          value="치료 비교"
-          description="효과 단정과 재발 방지 표현을 걷어내고 다시 구성해야 합니다."
-          tone="border-[#f1d6df] bg-[#fff9fb] text-[#bd476e]"
-        />
-      </div>
-      <div className="mt-5 rounded-2xl border border-[#e8e6ee] bg-white p-5 sm:p-6">
-        <h2 className="text-[15px] font-bold">첫 질문 세트</h2>
-        <p className="mt-1 text-xs text-[#9692a0]">
-          질문을 선택하면 공식 근거와 금지 표현이 연결된 브리프를 엽니다.
-        </p>
-        <div className="mt-4 grid gap-3 md:grid-cols-2">
-          {opportunities.slice(0, 4).map((item) => (
-            <button
-              key={item.question}
-              onClick={() => onBrief(item.question)}
-              className="flex items-start gap-3 rounded-xl border border-[#eceaf1] p-4 text-left hover:border-[#d6cff7] hover:bg-[#fcfbff]"
-            >
-              <span className="grid size-7 shrink-0 place-items-center rounded-lg bg-[#f0edff] text-[10px] font-bold text-[#5d49d2]">
-                {String(item.priority).padStart(2, '0')}
-              </span>
-              <span className="min-w-0 flex-1">
-                <span className="block text-xs font-semibold leading-5">
-                  {item.question}
-                </span>
-                <span className="mt-1 block text-[10px] text-[#9692a0]">
-                  {item.stage} · 근거 {item.evidence} · 위험 {item.risk}
-                </span>
-              </span>
-              <ArrowRight className="mt-1 size-4 shrink-0 text-[#aaa6b1]" />
-            </button>
-          ))}
-        </div>
-      </div>
-    </>
-  );
-}
-
-function Insight({
-  icon: Icon,
-  title,
-  value,
-  description,
-  tone,
-}: {
-  icon: typeof Activity;
-  title: string;
-  value: string;
-  description: string;
-  tone: string;
-}) {
-  return (
-    <div className={`rounded-2xl border p-5 ${tone}`}>
-      <div className="flex items-center gap-2">
-        <Icon className="size-4" />
-        <h3 className="text-sm font-bold">{title}</h3>
-      </div>
-      <p className="mt-4 text-2xl font-bold tracking-tight text-[#272431]">
-        {value}
-      </p>
-      <p className="mt-2 text-xs leading-5 text-[#777381]">{description}</p>
-    </div>
-  );
-}
-
-function OpportunitiesView({
-  onBrief,
-}: {
-  onBrief: (question: string) => void;
-}) {
-  const [filter, setFilter] = useState('전체');
-  const rows = opportunities.filter(
-    (row) => filter === '전체' || row.stage === filter,
-  );
-  return (
-    <>
-      <Heading
-        eyebrow="Evidence-led Opportunity"
-        title="검색량을 꾸며내지 않고, 근거가 준비된 질문부터 골랐습니다"
-        description="외부 데이터가 연결되기 전에는 수요를 추정하지 않습니다. 현재 순서는 병원 고유성·환자 유용성·근거 준비도·표현 위험을 기준으로 한 초기 가설입니다."
-        action={
-          <div className="flex flex-wrap gap-2">
-            {['전체', '검사 이해', '병원 선택', '치료 비교'].map((item) => (
-              <button
-                key={item}
-                onClick={() => setFilter(item)}
-                className={`h-9 rounded-lg border px-3 text-xs font-semibold ${filter === item ? 'border-[#6957e8] bg-[#f0edff] text-[#5946d4]' : 'border-[#e2dfe8] bg-white text-[#777381]'}`}
-              >
-                {item}
-              </button>
-            ))}
-          </div>
-        }
-      />
-      <div className="overflow-hidden rounded-2xl border border-[#e8e6ee] bg-white">
-        <div className="border-b border-[#efedf3] px-5 py-4 sm:px-6">
-          <h2 className="text-[15px] font-bold">초기 실행 후보</h2>
-          <p className="mt-1 text-xs text-[#9692a0]">
-            실제 검색 수요와 AI 노출 격차는 연결 후 재정렬됩니다.
-          </p>
-        </div>
-        <div className="divide-y divide-[#f0eef4]">
-          {rows.map((item) => (
-            <div
-              key={item.question}
-              className="grid gap-4 px-5 py-5 sm:px-6 lg:grid-cols-[52px_1.6fr_1fr_auto] lg:items-center"
-            >
-              <span className="grid size-10 place-items-center rounded-full bg-[#eeeaff] text-sm font-bold text-[#5f4dd2]">
-                {item.priority}
-              </span>
-              <div>
-                <div className="text-sm font-bold leading-5">
-                  {item.question}
-                </div>
-                <p className="mt-1.5 text-[11px] leading-5 text-[#8f8b98]">
-                  {item.reason}
-                </p>
-              </div>
-              <div className="grid grid-cols-3 gap-2 text-center text-[10px]">
-                {[
-                  ['단계', item.stage],
-                  ['근거', item.evidence],
-                  ['위험', item.risk],
-                ].map(([label, value]) => (
-                  <div
-                    key={label}
-                    className="rounded-lg bg-[#f7f6fa] px-2 py-2"
-                  >
-                    <div className="text-[#a09ca8]">{label}</div>
-                    <div className="mt-1 font-bold text-[#5f5b68]">{value}</div>
-                  </div>
-                ))}
-              </div>
-              <Button
-                onClick={() => onBrief(item.question)}
-                variant="outline"
-                size="sm"
-              >
-                <FileCheck2 className="size-3.5" /> 브리프
-              </Button>
-            </div>
-          ))}
-        </div>
-      </div>
-      <InfoNote>
-        월 검색량과 AI 언급률이 비어 있는 것은 오류가 아닙니다. 실제 계정
-        데이터가 없으므로 표시하지 않으며, Search Console과 AI API 연결 후
-        기준선 결과가 채워집니다.
-      </InfoNote>
-    </>
-  );
-}
 
 function StudioView({
   question,

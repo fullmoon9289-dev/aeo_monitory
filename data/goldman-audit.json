@@ -1,7 +1,10 @@
 {
   "clinicId": "goldman-clinic",
-  "checkedDate": "2026-09-11",
-  "scope": "대표 도메인 · 5개 지점 안내를 포함한 공개 페이지 7개와 수집 파일 3개 표본 점검",
+  "checkedDate": "2026-09-15",
+  "checkedAt": "2026-09-15T23:53:00+09:00",
+  "scope": "www.gold-man.com의 공개 HTML 10개·수집 설정 파일 4개 직접 HTTP 재조회. 전체 사이트 검사·Google 색인 확인·AI 답변 실측은 포함하지 않습니다.",
+  "method": "검색 도구의 캐시와 현재 응답이 다른 항목은 공식 서버의 현재 HTTP 응답을 우선했습니다. HTML 태그 존재 확인은 구조화 데이터 유효성 또는 실제 색인의 증명이 아닙니다.",
+  "summary": "검색에 읽힐 기본 구성과 질문형 의료정보가 이미 있습니다. 의료진 수와 사이트맵 안내는 이전 진단보다 정리됐습니다. 이제 비용 기준과 치료 설명의 일관성을 먼저 검토하고, 실제 검색어에 맞춰 기존 문서를 보완하는 것이 우선입니다.",
   "pages": [
     {
       "name": "대표 홈페이지",
@@ -31,7 +34,16 @@
       "noindex": false
     },
     {
-      "name": "진료시간",
+      "name": "지점·진료 안내",
+      "url": "https://www.gold-man.com/support/location",
+      "status": 200,
+      "canonical": "https://www.gold-man.com/support/location",
+      "description": true,
+      "structuredDataBlocks": 2,
+      "noindex": false
+    },
+    {
+      "name": "진료시간 안내",
       "url": "https://www.gold-man.com/support/hours",
       "status": 200,
       "canonical": "https://www.gold-man.com/support/hours",
@@ -58,6 +70,15 @@
       "noindex": false
     },
     {
+      "name": "요로결석",
+      "url": "https://www.gold-man.com/stone/urinary-stone",
+      "status": 200,
+      "canonical": "https://www.gold-man.com/stone/urinary-stone",
+      "description": true,
+      "structuredDataBlocks": 3,
+      "noindex": false
+    },
+    {
       "name": "의료정보: 의료진 소개",
       "url": "https://www.gold-man.com/docs/team/medicalteam-overview.html",
       "status": 200,
@@ -65,22 +86,36 @@
       "description": true,
       "structuredDataBlocks": 2,
       "noindex": false
+    },
+    {
+      "name": "의료정보: 수술 비용",
+      "url": "https://www.gold-man.com/docs/prostate/bph-surgery-cost.html",
+      "status": 200,
+      "canonical": "https://www.gold-man.com/docs/prostate/bph-surgery-cost.html",
+      "description": true,
+      "structuredDataBlocks": 2,
+      "noindex": false
     }
   ],
   "sitemaps": {
     "main": {
-      "entries": 72,
+      "entries": 70,
       "uniqueUrls": 70
     },
     "docs": {
-      "entries": 104,
-      "uniqueUrls": 104
+      "entries": 106,
+      "uniqueUrls": 106
     }
   },
   "resources": [
     {
       "name": "robots.txt",
       "url": "https://www.gold-man.com/robots.txt",
+      "status": 200
+    },
+    {
+      "name": "사이트맵 인덱스",
+      "url": "https://www.gold-man.com/sitemap_index.xml",
       "status": 200
     },
     {
@@ -92,6 +127,26 @@
       "name": "의료정보 사이트맵",
       "url": "https://www.gold-man.com/docs/sitemap.xml",
       "status": 200
+    }
+  ],
+  "rechecked": [
+    {
+      "title": "의료진 수 일치 확인",
+      "before": "9월 11일 기록: 대표·의료정보 11명, 수술 안내 12명",
+      "now": "현재 세 페이지 모두 11명 표기를 확인했습니다. 실제 재직 여부는 병원 확인 범위입니다.",
+      "url": "https://www.gold-man.com/prostate/bph-surgery"
+    },
+    {
+      "title": "사이트맵 발견 경로 정리",
+      "before": "9월 11일 기록: robots.txt에 의료정보 사이트맵만 안내, 대표 사이트맵 중복 2개",
+      "now": "현재 인덱스와 두 사이트맵이 robots.txt에 안내됩니다. 대표 70개·의료정보 106개 항목이며 각 파일 내 중복 URL은 없습니다. 색인 완료를 의미하지 않습니다.",
+      "url": "https://www.gold-man.com/robots.txt"
+    },
+    {
+      "title": "요로결석 페이지 제목 확인",
+      "before": "검색 도구의 이전 캐시에는 일반적인 제목이 표시됨",
+      "now": "현재 서버 응답의 문서 제목과 H1 모두 요로결석을 포함합니다. 오래된 캐시의 제목을 현재 오류로 보고하지 않습니다.",
+      "url": "https://www.gold-man.com/stone/urinary-stone"
     }
   ]
 }
